@@ -1,81 +1,155 @@
 # Presupuesto Modular App
 
-Aplicación base para el sistema de presupuesto financiero modular.
+Aplicación para gestionar presupuestos financieros modulares con estructura jerárquica, consolidación por niveles y vistas de reporte.
 
-## Estructura
+## Estado actual del proyecto
 
-- app/: punto de entrada de la aplicación
-- core/: modelos y utilidades compartidas
-- modules/: módulos funcionales por dominio
-- data/: archivos de datos y seed
-- tests/: pruebas del sistema
+Este proyecto ya ha avanzado de un MVP básico a una base funcional para presupuestos operativos y financieros. La lógica central permite:
 
-## Objetivo del MVP
+- crear presupuestos con estructura estándar peruana
+- seleccionar un capítulo padre o estructura madre
+- registrar partidas y subpartidas anidadas
+- generar códigos correlativos en jerarquía
+- actualizar partidas ya registradas
+- consolidar importes por capítulo, nivel y categoría
+- visualizar un reporte resumido por categoría y, en una segunda capa, por puesto/cargo
+- mantener una vista en matriz con acumulados jerárquicos
 
-- Presupuesto de ventas
-- Presupuesto de producción
-- Compras y MOD
-- Costo indirecto flexible
-- Análisis de desviaciones
-- Resumen financiero básico
+La aplicación queda organizada en:
 
-## Ejecutar el MVP
+- app/: backend, UI y punto de entrada
+- core/: modelos de dominio
+- modules/: módulos de negocio y estructura financiera
+- tests/: pruebas unitarias de regresión
+- data/: datos y seed
 
-Desde la raíz del proyecto, inicia la aplicación web:
+## Qué ya está funcionando
+
+### 1. Estructura jerárquica de partidas
+El sistema puede crear niveles de partidas como:
+
+- 1000
+- 1001
+- 1001.10
+- 1001.10.10
+- 1001.20
+- 1001.20.10
+
+Esto permite mantener la lógica financiera que exige crecimiento en subpartidas asociadas a una partida base, sin romper la estructura del presupuesto.
+
+### 2. Consolidación por árbol
+La matriz calcula montos acumulados en cada nivel del árbol, desde la partida hasta el capítulo principal. El acumulado se mantiene en todos los niveles superiores, lo cual es clave para la toma de decisiones y para la validación del presupuesto.
+
+### 3. Edición de partidas existentes
+Se incorporó la posibilidad de actualizar una partida ya registrada, evitando que el sistema quede bloqueado en la primera carga del registro cuando hay un error o se necesita ajustar la línea.
+
+### 4. Reporte funcional
+La pestaña de reporte permite observar un consolidado por categoría y por vista. Aunque todavía es un enfoque práctico, ya se tiene la base para proyectar la vista financiera y la vista por puesto/cargo, siguiendo la lógica documentada en los archivos de contexto.
+
+### 5. Pruebas automáticas
+El proyecto cuenta con una suite de pruebas que cubre la estructura jerárquica, los acumulados, la actualización de partidas y el reporte base.
+
+## Limitaciones actuales
+
+Aun así, el sistema no está listo para producción financiera completa. Hoy tiene estas restricciones principales:
+
+1. Persistencia en memoria
+   - Los datos se pierden al reiniciar el backend.
+   - Falta almacenamiento real con base de datos o archivo estructurado.
+
+2. Modelo financiero todavía parcialmente genérico
+   - La lógica de asignación de puestos, salarios, beneficios y análisis del flujo de caja está bien estructurada como base, pero no está modelada con toda la profundidad del negocio real.
+
+3. Reporte todavía funcional, pero no totalmente orientado a BI
+   - La vista de reporte sirve para consolidar, pero falta una capa más refinada para pivoteo multidimensional, filtros por periodo, persona, centro de costo y estructura de caja.
+
+4. Validación y control financiero más avanzado
+   - Falta validación de reglas empresariales como:
+     - centros de costo
+     - responsables por línea
+     - diferencia entre gasto directo e indirecto
+     - desglose por periodo
+     - flujo de caja y variación real vs presupuestado
+
+5. Persistencia y seguridad de negocio
+   - La API no tiene autenticación real en base de datos.
+   - No hay control de auditoría, trazabilidad ni historial de cambios.
+
+## Conclusión
+
+El proyecto ya no es un prototipo vacío: tiene una base sólida de presupuesto modular, jerarquía financiera y reporte inicial. El principal valor logrado es que la estructura ya permite crecer en subpartidas, cumplir la lógica financiera y mantener el control del total acumulado en cada nivel.
+
+Sin embargo, para convertirlo en una herramienta útil para toma de decisiones empresariales, lo siguiente es necesario:
+
+1. Persistencia real
+   - mover la información a SQLite, PostgreSQL o una capa adecuada de almacenamiento
+
+2. Modelo de negocio más completo
+   - distinguir claramente remuneraciones, beneficios, gastos de operación, gastos indirectos, materiales, inversiones y costos de estructura
+
+3. Vista pivote de reporte
+   - desarrollar completamente la vista financiera y la vista por puesto/cargo usando los documentos de contexto como referencia
+
+4. Auditoría y aprobación de cambios
+   - registrar cambios por usuario, fecha y justificación
+
+5. Interfaz más orientada a usuarios de negocio
+   - filtros, edición visual, exportación, KPI, comparativos y gráficos
+
+6. Integración con flujo de caja y análisis de variación
+   - comparar presupuesto versus ejecución, con desvíos, alertas y escenarios
+
+## Ruta sugerida de mejora
+
+### Fase 1: estabilizar el núcleo
+- persistencia
+- validación fuerte de códigos y jerarquías
+- edición y eliminación segura de partidas
+- pruebas de integración
+
+### Fase 2: fortalecer el modelo financiero
+- clasificación por tipo de gasto
+- estructura por cargo y centro de costo
+- presupuestos por periodo y por responsable
+
+### Fase 3: BI y gestión ejecutiva
+- tablero de control
+- pivote financiero
+- panel por persona, cargo, capítulo y subpartida
+- comparación real vs presupuesto
+
+### Fase 4: producción y administración
+- usuarios reales
+- roles con permisos por negocio
+- exportación, historial y versionado
+
+## Cómo ejecutar
+
+### Aplicación web
 
 ```bash
 python -m app.main
 ```
 
-Después abre `http://127.0.0.1:8000/`. El flujo de consola legado continúa
-disponible con `python -m app.main --cli`.
+Abrir en el navegador:
 
-La sesión permite seleccionar un rol, crear un presupuesto con una estructura
-estándar peruana y registrar partidas específicas. La matriz muestra
-los acumulados en los niveles de capítulo, concepto, partida genérica y partida
-específica. Los códigos de partida específica usan cuatro dígitos; por ejemplo,
-`2111` se consolida en `2110`, `2100` y `2000`.
+```text
+http://127.0.0.1:8000/
+```
 
-También se pueden crear subpartidas anidadas como `1000.01`, `1000.01.01` y
-`1000.01.01.01`. Cada nodo se agrega dentro del padre elegido y su importe se
-acumula hasta el capítulo madre.
+### Flujo CLI heredado
 
-Los presupuestos nuevos cargan automáticamente una estructura estándar de
-terminología peruana: remuneraciones, pensiones, bienes y servicios, donaciones,
-activos y servicio de la deuda. Ya no es necesario seleccionar un capítulo madre;
-los capítulos aparecen directamente como contenedores iniciales en la matriz.
+```bash
+python -m app.main --cli
+```
 
-El pipeline operativo también conserva el escenario base de ventas, producción,
-compras de materia prima, mano de obra directa y gastos indirectos. Para ejecutar
-las pruebas:
+### Tests
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-## Ejecutar el backend
-
-El backend HTTP no requiere dependencias externas y guarda los datos en memoria:
-
-```bash
-python -m app.backend
-```
-
-Endpoints principales:
-
-```text
-GET  /health
-GET  /catalogo/capitulos
-POST /login
-GET  /presupuestos
-POST /presupuestos
-POST /presupuestos/{id}/estructura-madre
-POST /presupuestos/{id}/partidas
-GET  /presupuestos/{id}/matriz
-POST /presupuestos/{id}/aprobar
-```
-
-Usuarios demo para el MVP:
+## Usuarios demo
 
 ```text
 lider.operativo / lider2026
@@ -84,21 +158,6 @@ direccion.general / general2026
 ingenieria.operaciones / ingenieria2026
 ```
 
-Dirección General puede consultar presupuestos existentes y aprobarlos. La
-exportación a PDF se realiza desde la interfaz mediante la impresión del navegador.
+## En resumen
 
-Ejemplo en PowerShell:
-
-```powershell
-$presupuesto = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/presupuestos `
-	-ContentType 'application/json' `
-	-Body '{"nombre":"Presupuesto 2026","ejercicio":2026,"rol":"Lider de Area"}'
-
-Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/presupuestos/$($presupuesto.id)/estructura-madre" `
-	-ContentType 'application/json' -Body '{"codigo":"2000"}'
-
-Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/presupuestos/$($presupuesto.id)/partidas" `
-	-ContentType 'application/json' -Body '{"codigo":"2111","descripcion":"Papeleria","importe":1250}'
-
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/presupuestos/$($presupuesto.id)/matriz"
-```
+La base funcional ya existe y es útil como motor inicial del presupuesto modular. Lo que falta no es reinventar la aplicación, sino llevarla a la siguiente etapa: convertirla en un sistema financiero con persistencia, reglas de negocio más exigentes y una capa de análisis ejecutiva sólida. Ese es el siguiente paso natural para transformar este MVP en una herramienta real para gestión financiera.

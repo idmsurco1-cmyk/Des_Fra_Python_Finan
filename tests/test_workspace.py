@@ -101,6 +101,25 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(reporte["Sueldo"]["total"], 950)
         self.assertEqual(reporte["Pension"]["total"], 200)
 
+    def test_generacion_con_sufijos_financieros_y_vista_puesto(self) -> None:
+        entorno = EntornoPresupuestario.iniciar("Presupuesto 2026", 2026, "Lider de Area")
+        entorno.seleccionar_estructura_madre("1000")
+
+        personal = entorno.agregar_partida("1001", "Personal", 0, categoria="Sueldo")
+        self.assertEqual(personal.codigo, "1001")
+
+        asistente = entorno.agregar_partida(codigo="", descripcion="Asistente", importe=2000, parent_codigo="1001", categoria="Sueldo")
+        supervisor = entorno.agregar_partida(codigo="", descripcion="Supervisor", importe=3000, parent_codigo="1001", categoria="Sueldo")
+
+        self.assertEqual(asistente.codigo, "1001.10")
+        self.assertEqual(supervisor.codigo, "1001.20")
+
+        vista = entorno.reporte_por_vista("puesto")
+        self.assertIn(".10", vista)
+        self.assertIn(".20", vista)
+        self.assertEqual(vista[".10"]["total"], 2000)
+        self.assertEqual(vista[".20"]["total"], 3000)
+
 
 if __name__ == "__main__":
     unittest.main()

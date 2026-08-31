@@ -4,12 +4,26 @@ from dataclasses import dataclass
 import re
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.models import BudgetModel, PartidaPresupuestal
 from modules.contabilidad.conac import CatalogoConac
+
+
+class PartidaReporte(TypedDict):
+    codigo: str
+    descripcion: str
+    importe: float
+    parent_codigo: str | None
+
+
+class BloqueCategoria(TypedDict):
+    total: float
+    partidas: list[PartidaReporte]
+    capitulos: dict[str, float]
 
 
 @dataclass
@@ -48,16 +62,14 @@ class EntornoPresupuestario:
         if contenedor is None:
             raise ValueError("Selecciona un contenedor de la estructura estándar.")
 
-        if "." not in contenedor:
-            prefijo = contenedor
+        if parent_codigo is None:
             usados = [
                 codigo for codigo in self.model.partidas
-                if re.fullmatch(r"\d{4}", codigo) and codigo.startswith(prefijo)
+                if re.fullmatch(r"\d{4}", codigo) and codigo.startswith(self.model.estructura_madre[:1])
             ]
             siguiente = 1
             while True:
-                candidato = f"{prefijo}{siguiente:02d}" if False else None
-                candidato = f"{prefijo}{siguiente:02d}"
+                candidato = f"{self.model.estructura_madre[:1]}{siguiente:03d}"
                 if candidato not in self.model.partidas and not candidato.endswith("0"):
                     return candidato
                 siguiente += 1
@@ -66,13 +78,18 @@ class EntornoPresupuestario:
             codigo for codigo in self.model.partidas
             if codigo.startswith(f"{contenedor}.") and len(codigo.split(".")) == len(contenedor.split(".")) + 1
         ]
-        numeradores = []
+        numeradores: list[int] = []
         for codigo in usados:
             sufijo = codigo.split(".")[-1]
             if sufijo.isdigit():
                 numeradores.append(int(sufijo))
-        siguiente = max(numeradores, default=0) + 1
-        return f"{contenedor}.{siguiente}"
+
+        siguiente = 10 if not numeradores else max(numeradores) + 10
+        while True:
+            candidato = f"{contenedor}.{siguiente}"
+            if candidato not in self.model.partidas:
+                return candidato
+            siguiente += 10
 
     def agregar_partida(
         self,
@@ -154,30 +171,51 @@ class EntornoPresupuestario:
             partida.parent_codigo = parent_codigo
         return partida
 
-    def reporte_por_categoria(self) -> dict[str, dict[str, object]]:
-        resultado: dict[str, dict[str, object]] = {}
+    def reporte_por_categoria(self) -> dict[str, BloqueCategoria]:
+        resultado: dict[str, BloqueCategoria] = {}
         for partida in self.model.partidas.values():
-            categoria = partida.categoria or "Sin categoría"
+            categoria = str(partida.categoria or "Sin categoría")
             bloque = resultado.setdefault(
                 categoria,
                 {"total": 0.0, "partidas": [], "capitulos": {}},
             )
-            bloque["total"] = float(bloque["total"]) + float(partida.importe)
+            importe = float(partida.importe)
+            bloque["total"] = float(bloque["total"]) + importe
             bloque["partidas"].append(
                 {
-                    "codigo": partida.codigo,
-                    "descripcion": partida.descripcion,
-                    "importe": partida.importe,
+                    "codigo": str(partida.codigo),
+                    "descripcion": str(partida.descripcion),
+                    "importe": importe,
                     "parent_codigo": partida.parent_codigo,
                 }
             )
             clave_capitulo = partida.codigo[:1] + "000"
-            capitulos = bloque["capitulos"]
-            if not isinstance(capitulos, dict):
-                capitulos = {}
-                bloque["capitulos"] = capitulos
-            capitulos[clave_capitulo] = float(capitulos.get(clave_capitulo, 0.0)) + float(partida.importe)
+            bloque["capitulos"][clave_capitulo] = float(bloque["capitulos"].get(clave_capitulo, 0.0)) + importe
         return resultado
+
+    def reporte_por_vista(self, vista: str = "financiera") -> dict[str, dict[str, object]]:
+        if vista == "puesto":
+            resultado: dict[str, dict[str, object]] = {}
+            for partida in self.model.partidas.values():
+                if "." not in partida.codigo:
+                    continue
+                clave = f".{partida.codigo.split('.')[-1]}"
+                bloque = resultado.setdefault(
+                    clave,
+                    {"total": 0.0, "partidas": [], "puesto": partida.descripcion},
+                )
+                importe = float(partida.importe)
+                bloque["total"] = float(bloque["total"]) + importe
+                bloque["partidas"].append(
+                    {
+                        "codigo": str(partida.codigo),
+                        "descripcion": str(partida.descripcion),
+                        "importe": importe,
+                        "parent_codigo": partida.parent_codigo,
+                    }
+                )
+            return resultado
+        return self.reporte_por_categoria()
 
     def aprobar(self, usuario: str, rol: str | None = None) -> None:
         if (rol or self.rol) != "Direccion General":

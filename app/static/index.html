@@ -441,7 +441,14 @@ button.mini{padding:6px 10px;font-size:10px}
     <section class="resumen" aria-labelledby="titulo-reporte">
       <span class="eyebrow">Reporte</span>
       <h2 id="titulo-reporte">Categorías y consolidado</h2>
-      <div class="campos" style="margin-top:16px; max-width: 420px;">
+      <div class="campos" style="margin-top:16px; max-width: 520px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <label>
+          <span class="rotulo">Vista</span>
+          <select id="sel-reporte-vista">
+            <option value="financiera">Financiera</option>
+            <option value="puesto">Puesto / cargo</option>
+          </select>
+        </label>
         <label>
           <span class="rotulo">Categoría</span>
           <select id="sel-reporte-categoria"></select>
@@ -699,27 +706,25 @@ function proponerCodigo(padre){
   if(!contenedor) return "";
   const usados = new Set(estado.filas.map(function(f){ return f.codigo; }));
 
-  if(!contenedor.includes(".")){
-    const base = String(contenedor).slice(0, 1);
-    let n = 1;
-    while(n <= 9999){
-      const candidato = base + String(n);
-      if(!usados.has(candidato) && !candidato.endsWith("0") && candidato.length === 4){
-        return candidato;
-      }
-      n += 1;
+  const esPadre = !contenedor.includes(".");
+  if(esPadre){
+    let n = 10;
+    while(n <= 999){
+      const candidato = contenedor + "." + String(n);
+      if(!usados.has(candidato)) return candidato;
+      n += 10;
     }
-    return "";
+    return contenedor + ".10";
   }
 
   const base = contenedor;
-  let n = 1;
-  while(n <= 9999){
+  let n = 10;
+  while(n <= 999){
     const candidato = base + "." + String(n);
     if(!usados.has(candidato)) return candidato;
-    n += 1;
+    n += 10;
   }
-  return base + ".1";
+  return base + ".10";
 }
 
 function pintarSelectorPadre(){
@@ -1034,18 +1039,20 @@ $("tab-reporte").addEventListener("click", function(){ seleccionarVista("reporte
 
 async function cargarReporte(){
   const categoriaSel = $("sel-reporte-categoria");
+  const vistaSel = $("sel-reporte-vista");
   if(!estado.presupuestoId){
     $("reporte-contenido").innerHTML = "<p class=\"empty\">Abre un presupuesto para ver el reporte.</p>";
     return;
   }
   try{
-    const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/reporte");
+    const vista = vistaSel.value || "financiera";
+    const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/reporte?vista=" + encodeURIComponent(vista));
     const reporte = datos && datos.reporte ? datos.reporte : {};
     const categorias = Object.keys(reporte).sort();
     categoriaSel.innerHTML = "";
     const opcionDefault = document.createElement("option");
     opcionDefault.value = "";
-    opcionDefault.textContent = "Selecciona una categoría";
+    opcionDefault.textContent = vista === "puesto" ? "Selecciona un puesto" : "Selecciona una categoría";
     categoriaSel.appendChild(opcionDefault);
     categorias.forEach(function(categoria){
       const opcion = document.createElement("option");
@@ -1064,6 +1071,10 @@ async function cargarReporte(){
     avisar("aviso-matriz", err.message, "error");
   }
 }
+
+$("sel-reporte-vista").addEventListener("change", function(){
+  if(estado.presupuestoId){ cargarReporte(); }
+});
 
 $("sel-reporte-categoria").addEventListener("change", function(){
   if(!estado.presupuestoId) return;

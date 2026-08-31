@@ -7,7 +7,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from uuid import uuid4
 
 if __package__:
@@ -96,13 +96,16 @@ class PresupuestoApi:
             "categoria": partida.categoria,
         }
 
-    def reporte(self, presupuesto_id: str) -> dict[str, Any]:
+    def reporte(self, presupuesto_id: str, vista: str = "financiera") -> dict[str, Any]:
         entorno = self._obtener(presupuesto_id)
+        vista_norm = "puesto" if vista == "puesto" else "financiera"
+        datos_reporte = entorno.reporte_por_vista(vista_norm)
         return {
             "id": presupuesto_id,
             "nombre": entorno.model.nombre,
             "ejercicio": entorno.model.ejercicio,
-            "reporte": entorno.reporte_por_categoria(),
+            "vista": vista_norm,
+            "reporte": datos_reporte,
         }
 
     def matriz(self, presupuesto_id: str) -> dict[str, Any]:
@@ -183,7 +186,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/reporte"):
                 self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
-                self._responder(200, self.api.reporte(presupuesto_id))
+                params = parse_qs(urlparse(self.path).query)
+                vista = params.get("vista", ["financiera"])[0]
+                self._responder(200, self.api.reporte(presupuesto_id, vista))
             else:
                 self._responder(404, {"error": "Ruta no encontrada."})
         except (KeyError, ValueError, PermissionError) as error:
@@ -213,7 +218,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/reporte"):
                 self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
-                self._responder(200, self.api.reporte(presupuesto_id))
+                params = parse_qs(urlparse(self.path).query)
+                vista = params.get("vista", ["financiera"])[0]
+                self._responder(200, self.api.reporte(presupuesto_id, vista))
             else:
                 self._responder(404, {"error": "Ruta no encontrada."})
         except (KeyError, ValueError, PermissionError, TypeError) as error:
