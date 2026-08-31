@@ -1,0 +1,1 @@
+"""Aplicación principal del proyecto."""

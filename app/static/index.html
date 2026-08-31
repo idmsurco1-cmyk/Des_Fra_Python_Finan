@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presupuesto Modular · MVP CONAC</title>
+<style>
+/* ============================================================
+   Presupuesto Modular · MVP
+   Papel de contabilidad columnar (regla verde) escrito con
+   bolígrafo azul. Los códigos son el material principal: se
+   componen en monoespaciada y los dígitos heredados del padre
+   se atenúan, de modo que la anidación se lee en la tipografía.
+
+   Estructura de la página:
+     · barra de contexto (presupuesto, ejercicio, madre, rol)
+     · columna central angosta = preparación + captura
+     · matriz a ancho completo = árbol de partidas anidadas
+
+   Archivo autónomo: sin dependencias, sin build, sin fuentes remotas.
+   ============================================================ */
+
+:root{
+  --hoja:      #F3F5F0;
+  --panel:     #FCFDFA;
+  --pad:       #E4EDDE;
+  --regla:     #A6C1A0;
+  --regla-fina:#D6E1D1;
+  --borde:     #C6D0C1;
+  --tinta:     #16221B;
+  --tinta-2:   #5A6B5F;
+  --tinta-3:   #93A497;
+  --pluma:     #1E3E8C;
+  --sello:     #97301A;
+  --verde-ok:  #2E7D4F;
+
+  --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --r: 4px;
+  --sangria: 22px;   /* ancho de cada nivel de anidación */
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--hoja);color:var(--tinta);
+  font-family:var(--sans);font-size:15px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+:focus-visible{outline:2px solid var(--pluma);outline-offset:2px;border-radius:2px}
+.oculto{display:none !important}
+.vistas{max-width:1440px;margin:0 auto;padding:14px clamp(16px,3vw,32px) 0;display:flex;gap:8px;border-bottom:1px solid var(--borde)}
+.vista{background:transparent;color:var(--tinta-2);border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 12px}
+.vista.activa{color:var(--pluma);border-bottom-color:var(--pluma)}
+.resumen{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);padding:20px}
+.resumen h2{margin:0;font-size:18px}.resumen-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 24px}
+.resumen-lista{list-style:none;padding:0;margin:0;border-top:1px solid var(--regla-fina)}.resumen-lista li{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--regla-fina)}
+@media (max-width:900px){.resumen-grid{grid-template-columns:1fr}}
+
+/* ---------- membrete ---------- */
+.membrete{
+  border-bottom:1px solid var(--borde);background:var(--panel);
+  padding:12px clamp(16px,3vw,32px);
+  display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+}
+.marca{display:flex;flex-direction:column;gap:1px;min-width:0}
+.marca strong{font-size:18px;font-weight:800;letter-spacing:-.025em}
+.eyebrow{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--tinta-2)}
+.sesion{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pulso{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--tinta-2);margin:0}
+.punto{width:8px;height:8px;border-radius:50%;background:var(--borde);flex:none}
+.punto[data-vivo="si"]{background:var(--verde-ok)}
+.punto[data-vivo="no"]{background:var(--sello)}
+.quien{text-align:right;line-height:1.2}
+.quien b{display:block;font-size:14px}
+.quien span{font-family:var(--mono);font-size:11px;color:var(--tinta-2);letter-spacing:.04em}
+
+/* ---------- barra de contexto ---------- */
+.riel-ctx{
+  border-bottom:1px solid var(--borde);background:var(--pad);
+  padding:10px clamp(16px,3vw,32px);
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+}
+.dato{display:flex;flex-direction:column;gap:1px;padding-right:18px;border-right:1px solid var(--regla);min-width:0}
+.dato:last-of-type{border-right:0}
+.dato .k{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-2)}
+.dato .v{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.dato .v.cifra{font-family:var(--mono);font-weight:500;letter-spacing:.05em}
+.empuje{margin-left:auto}
+
+/* ---------- layout ---------- */
+main{padding:clamp(16px,3vw,28px) clamp(16px,3vw,32px) 8px}
+.centro{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.ancho{max-width:1440px;margin:22px auto 0}
+
+/* ---------- paneles ---------- */
+.panel{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r)}
+.panel > .cabeza{padding:16px 20px 0;display:flex;align-items:baseline;gap:10px}
+.panel > .cabeza .n{font-family:var(--mono);font-size:11px;color:var(--pluma);letter-spacing:.1em}
+.panel h2{margin:0;font-size:16px;font-weight:750;letter-spacing:-.015em}
+.panel .cuerpo{padding:14px 20px 20px}
+.apunte{margin:6px 0 0;font-size:13px;color:var(--tinta-2)}
+
+.preparacion summary{list-style:none;cursor:pointer;padding:14px 20px;display:flex;align-items:center;gap:10px}
+.preparacion summary::-webkit-details-marker{display:none}
+.preparacion summary .n{font-family:var(--mono);font-size:11px;color:var(--pluma);letter-spacing:.1em}
+.preparacion summary h2{flex:1}
+.preparacion summary .flecha{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--tinta-2);transition:transform .15s ease}
+.preparacion[open] summary{border-bottom:1px solid var(--regla-fina)}
+.preparacion[open] summary .flecha{transform:rotate(90deg)}
+.bloque{padding:18px 20px;border-bottom:1px solid var(--regla-fina)}
+.bloque:last-child{border-bottom:0}
+.bloque > .titulo{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-2);margin:0 0 12px}
+
+fieldset{border:0;margin:0;padding:0;min-width:0}
+fieldset[disabled]{opacity:.5}
+
+/* ---------- campos ---------- */
+.campos{display:grid;gap:14px}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tres{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr);gap:14px}
+label{display:block;min-width:0}
+.rotulo{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--tinta-2);margin-bottom:5px}
+input,select{
+  width:100%;font-family:var(--sans);font-size:15px;color:var(--tinta);
+  background:transparent;border:0;border-bottom:1.5px solid var(--borde);
+  border-radius:0;padding:6px 2px;caret-color:var(--pluma);
+}
+input.cifra,select.cifra{font-family:var(--mono);letter-spacing:.04em}
+input:focus,select:focus{outline:none;border-bottom-color:var(--pluma)}
+input:disabled,select:disabled{color:var(--tinta-2)}
+select{appearance:none;padding-right:22px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--tinta-2) 50%),linear-gradient(135deg,var(--tinta-2) 50%,transparent 50%);
+  background-position:right 10px center,right 5px center;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+
+.acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+button{
+  font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.11em;
+  padding:10px 16px;border-radius:2px;border:1.5px solid var(--tinta);
+  background:var(--tinta);color:var(--hoja);cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+button:hover:not(:disabled){background:var(--pluma);border-color:var(--pluma)}
+button.pluma{background:transparent;color:var(--tinta);border-color:var(--borde)}
+button.pluma:hover:not(:disabled){background:transparent;color:var(--pluma);border-color:var(--pluma)}
+button:disabled{cursor:not-allowed;opacity:.45}
+button.mini{padding:6px 10px;font-size:10px}
+.demo{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.demo button{background:transparent;color:var(--tinta-2);border:1px dashed var(--borde);padding:5px 9px;font-size:10px;letter-spacing:.05em;text-transform:none}
+.demo button:hover{background:transparent;color:var(--pluma);border-color:var(--pluma)}
+
+/* ---------- ruta del contenedor ---------- */
+.ruta{border-left:3px solid var(--pluma);background:var(--pad);padding:10px 12px;margin-bottom:16px}
+.ruta .k{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-2)}
+.ruta .cadena{font-family:var(--mono);font-size:14px;letter-spacing:.04em;margin-top:3px;overflow-wrap:anywhere}
+.ruta .cadena .sep{color:var(--tinta-3);padding:0 5px}
+.ruta .cadena .fin{font-weight:700}
+.ruta .txt{font-size:12.5px;color:var(--tinta-2);margin-top:3px}
+
+/* ---------- avisos ---------- */
+.aviso{margin-top:14px;padding:10px 12px;border-left:3px solid var(--borde);background:#fff;font-size:13.5px}
+.aviso:empty{display:none}
+.aviso[data-tipo="error"]{border-left-color:var(--sello);color:var(--sello)}
+.aviso[data-tipo="ok"]{border-left-color:var(--verde-ok)}
+.aviso[data-tipo="nota"]{border-left-color:var(--pluma);color:var(--tinta-2)}
+
+/* ---------- matriz ---------- */
+.matriz{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);overflow:hidden}
+.matriz > .cabeza{
+  padding:16px 20px;border-bottom:1px solid var(--regla);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+}
+.matriz h2{margin:2px 0 0;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.matriz .meta{font-family:var(--mono);font-size:11px;color:var(--tinta-2);letter-spacing:.05em;margin:2px 0 0}
+.mandos{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mandos label{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--tinta-2)}
+.mandos select{width:auto;border-bottom-color:var(--regla);font-family:var(--mono);font-size:12px;padding:4px 20px 4px 2px}
+
+.tabla{overflow-x:auto}
+.encabezado,.fila{
+  display:grid;
+  grid-template-columns:minmax(320px,1fr) 152px 168px 40px;
+  gap:12px;align-items:baseline;padding:0 20px;
+}
+.encabezado{
+  background:var(--pad);border-bottom:1px solid var(--regla);
+  padding-top:8px;padding-bottom:8px;
+  font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-2);
+  position:sticky;top:0;z-index:2;
+}
+.encabezado .der{text-align:right}
+
+.filas{list-style:none;margin:0;padding:0}
+.fila{padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--regla-fina)}
+.fila:nth-child(even){background:rgba(228,237,222,.4)}
+.fila:hover{background:rgba(30,62,140,.055)}
+.fila.nueva{animation:tinta 1.1s ease-out}
+@keyframes tinta{0%{background:rgba(30,62,140,.18)}100%{background:transparent}}
+
+.rama{display:flex;align-items:baseline;min-width:0}
+.rieles{display:flex;align-self:stretch;flex:none}
+.riel{width:var(--sangria);align-self:stretch;border-right:1px solid transparent}
+.riel[data-viva="si"]{border-right-color:var(--regla-fina)}
+.pinza{
+  flex:none;width:20px;height:20px;margin-right:6px;padding:0;
+  border:1px solid var(--borde);background:var(--panel);color:var(--tinta-2);
+  font-family:var(--mono);font-size:11px;line-height:1;border-radius:2px;
+  display:flex;align-items:center;justify-content:center;
+}
+.pinza:hover{background:var(--pluma);border-color:var(--pluma);color:#fff}
+.pinza.hueca{visibility:hidden}
+.etiquetas{display:flex;flex-direction:column;gap:1px;min-width:0}
+.cod{font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;white-space:nowrap}
+.cod .heredado{color:var(--tinta-3)}
+.cod .relleno{color:#C7D2C9}
+.cod .propio{color:var(--tinta);font-weight:700}
+.cod .sep{color:var(--tinta-3)}
+.desc{font-size:13.5px;color:var(--tinta-2);overflow-wrap:anywhere}
+
+.nivel{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--tinta-2);white-space:nowrap}
+.nivel .hijos{color:var(--tinta-3)}
+.monto{font-family:var(--mono);font-size:14px;text-align:right;font-variant-numeric:tabular-nums;border-left:1px solid var(--regla);padding-left:12px}
+.mas{
+  padding:0;width:24px;height:24px;border:1px solid transparent;background:transparent;color:var(--tinta-3);
+  font-size:15px;line-height:1;border-radius:2px;justify-self:end;
+}
+.fila:hover .mas,.mas:focus-visible{border-color:var(--borde);color:var(--pluma)}
+.mas:hover:not(:disabled){background:var(--pluma);border-color:var(--pluma);color:#fff}
+
+.cierre{
+  display:grid;grid-template-columns:minmax(320px,1fr) 168px 40px;gap:12px;
+  padding:14px 20px 18px;border-top:3px double var(--tinta);
+}
+.cierre .etiqueta{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--tinta-2)}
+.cierre .total{font-family:var(--mono);font-size:20px;text-align:right;font-variant-numeric:tabular-nums;border-left:1px solid var(--regla);padding-left:12px}
+
+.vacio{padding:52px 24px;text-align:center;color:var(--tinta-2)}
+.vacio p{margin:0 auto;max-width:36em;font-size:14px}
+.vacio .marca-agua{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;color:var(--tinta-3)}
+
+.sello{
+  display:inline-block;border:2px solid var(--sello);color:var(--sello);
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;
+  padding:6px 12px;transform:rotate(-3.5deg);
+}
+
+.pie{max-width:1440px;margin:0 auto;padding:18px clamp(16px,3vw,32px) 40px;font-size:12.5px;color:var(--tinta-2)}
+.pie ul{margin:6px 0 0;padding-left:18px}
+
+@media (max-width:900px){
+  :root{--sangria:15px}
+  .encabezado,.fila{grid-template-columns:minmax(240px,1fr) 128px 34px;padding-left:14px;padding-right:14px;gap:10px}
+  .col-nivel,.fila .nivel{display:none}
+  .cierre{grid-template-columns:minmax(0,1fr) 128px 34px;padding-left:14px;padding-right:14px}
+  .cod{font-size:13px}
+  .monto{font-size:12.5px}
+  .cierre .total{font-size:16px}
+  .tres,.dos{grid-template-columns:1fr}
+  .dato{border-right:0;padding-right:0}
+  .mas{border-color:var(--borde)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="membrete">
+  <div class="marca">
+    <span class="eyebrow">MVP · Clasificador CONAC</span>
+    <strong>Presupuesto Modular</strong>
+  </div>
+  <div class="sesion">
+    <p class="pulso"><span class="punto" id="pulso-punto"></span><span id="pulso-texto">Comprobando backend…</span></p>
+    <div class="quien oculto" id="tarjeta-sesion">
+      <b id="sesion-usuario">—</b>
+      <span id="sesion-rol">—</span>
+    </div>
+    <button type="button" class="pluma mini oculto" id="btn-salir">Cerrar sesión</button>
+  </div>
+</header>
+
+<div class="riel-ctx oculto" id="riel-contexto">
+  <div class="dato"><span class="k">Presupuesto</span><span class="v" id="ctx-nombre">—</span></div>
+  <div class="dato"><span class="k">Ejercicio</span><span class="v cifra" id="ctx-ejercicio">—</span></div>
+  <div class="dato"><span class="k">Estructura</span><span class="v cifra" id="ctx-madre">Perú · estándar</span></div>
+  <div class="dato"><span class="k">Rol activo</span><span class="v" id="ctx-rol">—</span></div>
+  <button type="button" class="pluma mini empuje" id="btn-ajustes">Ajustes del presupuesto</button>
+</div>
+
+<nav class="vistas" aria-label="Vistas del presupuesto">
+  <button type="button" class="vista activa" id="tab-matriz" aria-selected="true">Matriz</button>
+  <button type="button" class="vista" id="tab-resumen" aria-selected="false">Resumen</button>
+  <button type="button" class="vista" id="tab-reporte" aria-selected="false">Reporte</button>
+</nav>
+
+<main>
+  <!-- ============ COLUMNA CENTRAL: preparación + captura ============ -->
+  <div class="centro">
+
+    <!-- Sesión -->
+    <section class="panel" id="paso-sesion">
+      <div class="cabeza"><span class="n">01</span><h2>Entrar</h2></div>
+      <div class="cuerpo">
+        <p class="apunte" style="margin:0 0 16px">Tu rol llega desde el backend y decide qué puedes registrar.</p>
+        <form id="form-login" novalidate>
+          <div class="dos">
+            <label><span class="rotulo">Usuario</span>
+              <input type="text" id="in-usuario" autocomplete="username" spellcheck="false"></label>
+            <label><span class="rotulo">Contraseña</span>
+              <input type="password" id="in-contrasena" autocomplete="current-password"></label>
+          </div>
+          <div class="acciones"><button type="submit" id="btn-entrar">Entrar</button></div>
+        </form>
+        <div class="demo" id="usuarios-demo" aria-label="Usuarios de prueba"></div>
+        <p class="aviso" id="aviso-sesion" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Preparación: presupuesto + estructura madre -->
+    <details class="panel preparacion oculto" id="preparacion">
+      <summary>
+        <span class="n">02</span>
+        <h2>Presupuesto y estructura madre</h2>
+        <span class="flecha">&#9656;</span>
+      </summary>
+
+      <div class="bloque">
+        <p class="titulo">Abrir o crear</p>
+        <fieldset disabled id="fs-presupuesto">
+          <div class="campos">
+            <label><span class="rotulo">Presupuestos de esta sesión</span>
+              <select id="sel-presupuestos"><option value="">— ninguno seleccionado —</option></select></label>
+          </div>
+          <div class="acciones"><button type="button" class="pluma" id="btn-abrir">Abrir seleccionado</button></div>
+
+          <div class="campos" style="margin-top:22px">
+            <div class="tres">
+              <label><span class="rotulo">Nombre nuevo</span>
+                <input type="text" id="in-nombre" value="Presupuesto 2026"></label>
+              <label><span class="rotulo">Ejercicio</span>
+                <input type="number" class="cifra" id="in-ejercicio" value="2026"></label>
+              <label><span class="rotulo">Responsable</span>
+                <input type="text" id="in-rol" value="—" readonly></label>
+            </div>
+          </div>
+          <div class="acciones"><button type="button" id="btn-crear">Crear presupuesto</button></div>
+        </fieldset>
+        <p class="aviso" id="aviso-presupuesto" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="bloque">
+        <p class="titulo">Estructura peruana</p>
+        <p class="apunte">La matriz carga automáticamente el clasificador estándar. Elige cualquier capítulo o partida como contenedor para abrir un nuevo nivel.</p>
+      </div>
+    </details>
+
+    <!-- Captura: el centro de la pantalla -->
+    <section class="panel oculto" id="paso-partida">
+      <div class="cabeza"><span class="n">03</span><h2>Registrar partida</h2></div>
+      <div class="cuerpo">
+        <div class="ruta">
+          <span class="k">Se guarda dentro de</span>
+          <div class="cadena" id="ruta-cadena">—</div>
+          <div class="txt" id="ruta-txt">—</div>
+        </div>
+
+        <fieldset disabled id="fs-partida">
+          <form id="form-partida" novalidate>
+            <div class="campos">
+              <label><span class="rotulo">Contenedor</span>
+                <select class="cifra" id="sel-padre"></select></label>
+              <div class="tres">
+                <label><span class="rotulo">Código</span>
+                  <input type="text" class="cifra" id="in-codigo" spellcheck="false" autocomplete="off" readonly></label>
+                <label><span class="rotulo">Importe</span>
+                  <input type="number" class="cifra" id="in-importe" step="0.01" autocomplete="off"></label>
+                <label><span class="rotulo">Descripción</span>
+                  <input type="text" id="in-descripcion" autocomplete="off"></label>
+              </div>
+            </div>
+            <div class="acciones">
+              <button type="submit" id="btn-partida">Guardar partida</button>
+              <button type="button" class="pluma" id="btn-subir">Subir un nivel</button>
+              <button type="button" class="pluma oculto" id="btn-cancelar-edicion">Cancelar edición</button>
+            </div>
+          </form>
+        </fieldset>
+        <p class="aviso" id="aviso-partida" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ MATRIZ A ANCHO COMPLETO ============ -->
+  <div class="ancho" id="vista-matriz">
+    <section class="matriz" aria-labelledby="titulo-matriz">
+      <div class="cabeza">
+        <div>
+          <span class="eyebrow">Matriz acumulada</span>
+          <h2 id="titulo-matriz">Sin presupuesto abierto</h2>
+          <p class="meta" id="matriz-meta">Los acumulados los calcula el backend.</p>
+        </div>
+        <div class="mandos">
+          <label for="sel-profundidad">Ver hasta
+            <select id="sel-profundidad">
+              <option value="99" selected>todo</option>
+              <option value="1">nivel 1</option>
+              <option value="2">nivel 2</option>
+              <option value="3">nivel 3</option>
+              <option value="4">nivel 4</option>
+              <option value="5">nivel 5</option>
+              <option value="6">nivel 6</option>
+            </select>
+          </label>
+          <button type="button" class="pluma mini" id="btn-expandir">Expandir</button>
+          <button type="button" class="pluma mini" id="btn-contraer">Contraer</button>
+          <span id="zona-aprobacion"></span>
+        </div>
+      </div>
+
+      <div id="matriz-cuerpo">
+        <div class="vacio">
+          <p class="marca-agua">Hoja en blanco</p>
+          <p>Entra con tu usuario y crea un presupuesto. La estructura estándar peruana estará lista para abrir partidas y subpartidas sin límite de niveles.</p>
+        </div>
+      </div>
+    </section>
+    <p class="aviso" id="aviso-matriz" role="status" aria-live="polite"></p>
+  </div>
+  <div class="ancho oculto" id="vista-resumen">
+    <section class="resumen" aria-labelledby="titulo-resumen">
+      <span class="eyebrow">Lectura ejecutiva</span>
+      <h2 id="titulo-resumen">Resumen del presupuesto</h2>
+      <div class="resumen-grid" id="resumen-metricas"></div>
+      <h2>Desglose de partidas</h2>
+      <ul class="resumen-lista" id="resumen-partidas"><li class="empty">Abre un presupuesto para ver su resumen.</li></ul>
+    </section>
+  </div>
+
+  <div class="ancho oculto" id="vista-reporte">
+    <section class="resumen" aria-labelledby="titulo-reporte">
+      <span class="eyebrow">Reporte</span>
+      <h2 id="titulo-reporte">Categorías y consolidado</h2>
+      <div class="campos" style="margin-top:16px; max-width: 420px;">
+        <label>
+          <span class="rotulo">Categoría</span>
+          <select id="sel-reporte-categoria"></select>
+        </label>
+      </div>
+      <div id="reporte-contenido" style="margin-top:18px;"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="pie">
+  <span class="eyebrow">Alcance de esta versión</span>
+  <ul>
+    <li>El almacenamiento es en memoria: al reiniciar el backend no quedan datos previos.</li>
+    <li>Todavía no hay edición ni borrado de partidas, ni estados financieros, flujo de efectivo o desviaciones.</li>
+    <li>Los permisos se aplican en el backend; esta pantalla solo refleja lo que responde.</li>
+  </ul>
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Estado. El frontend no inventa ids, no acumula importes y no
+   decide qué es válido: ordena, anida y pinta lo que responde
+   el backend.
+   ============================================================ */
+const estado = {
+  token:null, usuario:null, rol:null,
+  presupuestoId:null, presupuesto:null,
+  capitulos:[], madre:null, madreDescripcion:"",
+  filas:[], nodos:new Map(), raices:[],
+  colapsados:new Set(), profundidadMax:99,
+  aprobado:false, aprobadoPor:null,
+  recienGuardada:null,
+  editandoCodigo:null
+};
+
+const ROLES_QUE_CAPTURAN = ["Lider de Area", "Director Financiero"];
+const ROL_QUE_APRUEBA = "Direccion General";
+const USUARIOS_DEMO = [
+  { usuario:"lider.operativo",        contrasena:"lider2026" },
+  { usuario:"director.financiero",    contrasena:"director2026" },
+  { usuario:"direccion.general",      contrasena:"general2026" },
+  { usuario:"ingenieria.operaciones", contrasena:"ingenieria2026" }
+];
+const NIVELES_BASE = ["Capitulo","Concepto","Partida generica","Partida especifica"];
+
+const dinero = new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN" });
+const $ = (id) => document.getElementById(id);
+
+/* ---------- capa HTTP ---------- */
+class ErrorApi extends Error {
+  constructor(mensaje, estatus){ super(mensaje); this.estatus = estatus; }
+}
+async function api(ruta, opciones){
+  opciones = opciones || {};
+  const cfg = { method: opciones.method || "GET", headers: {} };
+  if(opciones.cuerpo !== undefined){ cfg.headers["Content-Type"] = "application/json"; cfg.body = JSON.stringify(opciones.cuerpo); }
+  if(estado.token) cfg.headers["Authorization"] = "Bearer " + estado.token;
+  let respuesta;
+  try{ respuesta = await fetch(ruta, cfg); }catch(_){ throw new ErrorApi("El servidor no respondió. Comprueba que la aplicación sigue corriendo.", 0); }
+  const texto = await respuesta.text();
+  let datos = null;
+  if(texto){ try{ datos = JSON.parse(texto); }catch(_){ datos = null; } }
+  if(!respuesta.ok) throw new ErrorApi((datos && datos.error) || "El servidor respondió con estado " + respuesta.status + ".", respuesta.status);
+  return datos;
+}
+function avisar(id, mensaje, tipo){ const nodo = $(id); if(!nodo) return; nodo.textContent = mensaje || ""; if(mensaje) nodo.setAttribute("data-tipo", tipo || "nota"); else nodo.removeAttribute("data-tipo"); }
+function limpiarAvisos(){ ["aviso-sesion","aviso-presupuesto","aviso-madre","aviso-partida","aviso-matriz"].forEach(function(id){ avisar(id,""); }); }
+async function comprobarSalud(){ try{ const datos = await api("/api/health"); const vivo = !datos || datos.status === "ok"; $("pulso-punto").setAttribute("data-vivo", vivo ? "si" : "no"); $("pulso-texto").textContent = vivo ? "Backend en línea" : "Backend con incidencias"; }catch(_){ $("pulso-punto").setAttribute("data-vivo","no"); $("pulso-texto").textContent = "Backend sin respuesta"; } }
+function pintarUsuariosDemo(){ const caja = $("usuarios-demo"); USUARIOS_DEMO.forEach(function(u){ const b = document.createElement("button"); b.type = "button"; b.textContent = u.usuario; b.addEventListener("click", function(){ $("in-usuario").value = u.usuario; $("in-contrasena").value = u.contrasena; }); caja.appendChild(b); }); }
+$("form-login").addEventListener("submit", async function(ev){
+  ev.preventDefault(); const usuario = $("in-usuario").value.trim(); const contrasena = $("in-contrasena").value;
+  if(!usuario || !contrasena){ avisar("aviso-sesion","Escribe usuario y contraseña para continuar.","error"); return; }
+  $("btn-entrar").disabled = true;
+  try{ const datos = await api("/api/login", { method:"POST", cuerpo:{ usuario:usuario, contrasena:contrasena } }); estado.token = datos.token; estado.usuario = datos.usuario || usuario; estado.rol = datos.rol; tomarSesion(); await cargarPresupuestos(); avisar("aviso-presupuesto","Sesión iniciada como " + estado.rol + ". Abre un presupuesto o crea uno nuevo.","ok"); }
+  catch(err){ avisar("aviso-sesion", err.message, "error"); } finally{ $("btn-entrar").disabled = false; }
+});
+function tomarSesion(){ $("sesion-usuario").textContent = estado.usuario; $("sesion-rol").textContent = estado.rol; $("tarjeta-sesion").classList.remove("oculto"); $("btn-salir").classList.remove("oculto"); $("paso-sesion").classList.add("oculto"); $("preparacion").classList.remove("oculto"); $("preparacion").open = true; $("riel-contexto").classList.remove("oculto"); $("in-rol").value = estado.rol; $("ctx-rol").textContent = estado.rol; $("fs-presupuesto").disabled = false; avisar("aviso-sesion", ""); }
+$("btn-salir").addEventListener("click", function(){ estado.token=null; estado.usuario=null; estado.rol=null; estado.presupuestoId=null; estado.presupuesto=null; estado.madre=null; estado.madreDescripcion=""; estado.filas=[]; estado.nodos=new Map(); estado.raices=[]; estado.colapsados=new Set(); estado.aprobado=false; estado.aprobadoPor=null; estado.recienGuardada=null; $("tarjeta-sesion").classList.add("oculto"); $("btn-salir").classList.add("oculto"); $("paso-sesion").classList.remove("oculto"); $("preparacion").classList.add("oculto"); $("paso-partida").classList.add("oculto"); $("riel-contexto").classList.add("oculto"); $("in-contrasena").value=""; $("sel-presupuestos").length=1; $("fs-presupuesto").disabled=true; $("fs-partida").disabled=true; limpiarAvisos(); reiniciarMatriz(); });
+$("btn-ajustes").addEventListener("click", function(){
+  $("preparacion").open = true;
+  $("preparacion").scrollIntoView({ behavior:"smooth", block:"center" });
+});
+
+/* ============================================================
+   Presupuestos
+   ============================================================ */
+async function cargarPresupuestos(){
+  try{
+    const datos = await api("/api/presupuestos");
+    const lista = Array.isArray(datos) ? datos : (datos && (datos.presupuestos || datos.items)) || [];
+    const sel = $("sel-presupuestos");
+    sel.length = 1;
+    lista.forEach(function(p){
+      const op = document.createElement("option");
+      op.value = p.id;
+      op.textContent = (p.nombre || "Sin nombre") + " · " + (p.ejercicio != null ? p.ejercicio : "s/e");
+      sel.appendChild(op);
+    });
+    if(estado.presupuestoId) sel.value = estado.presupuestoId;
+  }catch(err){
+    avisar("aviso-presupuesto","No se pudo leer la lista de presupuestos: " + err.message, "error");
+  }
+}
+
+$("btn-crear").addEventListener("click", async function(){
+  const nombre = $("in-nombre").value.trim();
+  const ejercicio = Number($("in-ejercicio").value);
+  if(!nombre){ avisar("aviso-presupuesto","El presupuesto necesita un nombre.","error"); return; }
+  $("btn-crear").disabled = true;
+  try{
+    const datos = await api("/api/presupuestos",{ method:"POST", cuerpo:{ nombre:nombre, ejercicio:ejercicio, rol:estado.rol } });
+    adoptarPresupuesto(datos);
+    avisar("aviso-presupuesto","Presupuesto creado con la estructura estándar peruana.","ok");
+    await cargarPresupuestos();
+    $("sel-presupuestos").value = estado.presupuestoId;
+    await refrescarMatriz();
+  }catch(err){
+    avisar("aviso-presupuesto", err.message, "error");
+  }finally{
+    $("btn-crear").disabled = false;
+  }
+});
+
+$("btn-abrir").addEventListener("click", async function(){
+  const id = $("sel-presupuestos").value;
+  if(!id){ avisar("aviso-presupuesto","Elige un presupuesto de la lista o crea uno nuevo.","error"); return; }
+  const sel = $("sel-presupuestos");
+  adoptarPresupuesto({ id:id, nombre:sel.options[sel.selectedIndex].textContent.split(" · ")[0] });
+  try{
+    await refrescarMatriz();
+    avisar("aviso-presupuesto","Presupuesto abierto.","ok");
+  }catch(err){
+    avisar("aviso-presupuesto", err.message, "error");
+  }
+});
+
+function adoptarPresupuesto(datos){
+  estado.presupuestoId = datos.id;
+  estado.presupuesto = datos;
+  estado.madre = null;
+  estado.madreDescripcion = "";
+  estado.filas = [];
+  estado.nodos = new Map();
+  estado.raices = [];
+  estado.colapsados = new Set();
+  $("ctx-nombre").textContent = datos.nombre || "—";
+  $("ctx-ejercicio").textContent = datos.ejercicio != null ? datos.ejercicio : "—";
+  $("ctx-madre").textContent = "Perú · estándar";
+  $("fs-partida").disabled = true;
+  $("paso-partida").classList.add("oculto");
+}
+
+function ancestrosDe(codigo){
+  const partes = codigo.split(".");
+  const lista = [];
+  for(let i = partes.length - 1; i >= 1; i--) lista.push(partes.slice(0,i).join("."));
+  const base = partes[0];
+  if(/^\d{4}$/.test(base)){
+    for(let k = 1; k <= 3; k++){
+      const anc = base.slice(0, 4 - k) + "0".repeat(k);
+      if(anc !== base && lista.indexOf(anc) === -1) lista.push(anc);
+    }
+  }
+  return lista;
+}
+
+function construirArbol(){
+  estado.nodos = new Map(); estado.raices = [];
+  estado.filas.forEach(function(f){ estado.nodos.set(f.codigo, { fila:f, codigo:f.codigo, hijos:[], padre:null, nivel:0 }); });
+  estado.filas.forEach(function(f){
+    const nodo = estado.nodos.get(f.codigo);
+    const padre = ancestrosDe(f.codigo).find(function(a){ return estado.nodos.has(a); });
+    if(padre){ nodo.padre = padre; estado.nodos.get(padre).hijos.push(nodo); }
+    else estado.raices.push(nodo);
+  });
+  const marcar = function(nodo, nivel){ nodo.nivel = nivel; nodo.hijos.forEach(function(h){ marcar(h, nivel + 1); }); };
+  estado.raices.forEach(function(r){ marcar(r, 0); });
+}
+
+function cadenaDe(codigo){
+  const cadena = [];
+  let actual = estado.nodos.get(codigo);
+  while(actual){
+    cadena.unshift(actual.codigo);
+    actual = actual.padre ? estado.nodos.get(actual.padre) : null;
+  }
+  if(!cadena.length) cadena.push(codigo);
+  return cadena;
+}
+
+function nivelVisible(nodo){
+  if(nodo.fila.nivel) return nodo.fila.nivel;
+  return NIVELES_BASE[nodo.nivel] || ("Subpartida N" + nodo.nivel);
+}
+
+/* ============================================================
+   Captura de partidas
+   ============================================================ */
+$("sel-padre").addEventListener("change", function(){
+  if(!estado.editandoCodigo) $("in-codigo").value = proponerCodigo($("sel-padre").value);
+  pintarRuta();
+});
+$("btn-subir").addEventListener("click", function(){
+  const nodo = estado.nodos.get($("sel-padre").value);
+  seleccionarPadre(nodo && nodo.padre ? nodo.padre : estado.madre, false);
+});
+
+function seleccionarPadre(codigo, enfocar){
+  const sel = $("sel-padre");
+  const existe = Array.prototype.some.call(sel.options, function(o){ return o.value === codigo; });
+  if(!existe) return;
+  sel.value = codigo;
+  $("in-codigo").value = proponerCodigo(codigo);
+  pintarRuta();
+  if(enfocar){
+    $("paso-partida").scrollIntoView({ behavior:"smooth", block:"center" });
+    $("in-descripcion").focus();
+  }
+}
+
+function pintarRuta(){
+  const padre = $("sel-padre").value || estado.madre;
+  const cadena = $("ruta-cadena");
+  cadena.innerHTML = "";
+  if(!padre){ cadena.textContent = "—"; $("ruta-txt").textContent = "—"; return; }
+
+  const ruta = cadenaDe(padre);
+  ruta.forEach(function(c, i){
+    if(i){
+      const s = document.createElement("span");
+      s.className = "sep"; s.textContent = "\u203A";
+      cadena.appendChild(s);
+    }
+    const s = document.createElement("span");
+    if(i === ruta.length - 1) s.className = "fin";
+    s.textContent = c;
+    cadena.appendChild(s);
+  });
+
+  const nodo = estado.nodos.get(padre);
+  const nivel = nodo ? nodo.nivel + 2 : 1;
+  const desc = nodo ? (nodo.fila.descripcion || nivelVisible(nodo)) : (estado.madreDescripcion || "Capítulo madre");
+  $("ruta-txt").textContent = desc + " · la nueva partida quedará en el nivel " + nivel + " del árbol.";
+}
+
+/* Propone el siguiente código libre dentro del contenedor:
+   · en el capítulo, una partida específica de cuatro dígitos que no termine en 0
+   · en cualquier otro nodo, el consecutivo siguiente respetando el
+     formato que ya usan sus hermanos (.1 o .01) */
+function proponerCodigo(padre){
+  const contenedor = padre || estado.madre || (estado.filas[0] && estado.filas[0].codigo);
+  if(!contenedor) return "";
+  const usados = new Set(estado.filas.map(function(f){ return f.codigo; }));
+
+  if(!contenedor.includes(".")){
+    const base = String(contenedor).slice(0, 1);
+    let n = 1;
+    while(n <= 9999){
+      const candidato = base + String(n);
+      if(!usados.has(candidato) && !candidato.endsWith("0") && candidato.length === 4){
+        return candidato;
+      }
+      n += 1;
+    }
+    return "";
+  }
+
+  const base = contenedor;
+  let n = 1;
+  while(n <= 9999){
+    const candidato = base + "." + String(n);
+    if(!usados.has(candidato)) return candidato;
+    n += 1;
+  }
+  return base + ".1";
+}
+
+function pintarSelectorPadre(){
+  const sel = $("sel-padre");
+  const anterior = sel.value;
+  sel.innerHTML = "";
+  if(!estado.filas.length) return;
+
+  const agregar = function(codigo, etiqueta, nivel){
+    const op = document.createElement("option");
+    op.value = codigo;
+    op.textContent = "\u00A0\u00A0\u00A0".repeat(nivel) + (nivel ? "\u2514 " : "") + etiqueta;
+    sel.appendChild(op);
+  };
+
+  const recorrer = function(nodo){
+    agregar(nodo.codigo, nodo.codigo + " · " + (nodo.fila.descripcion || nivelVisible(nodo)), nodo.nivel);
+    nodo.hijos.forEach(recorrer);
+  };
+  estado.raices.forEach(recorrer);
+
+  const existe = Array.prototype.some.call(sel.options, function(o){ return o.value === anterior; });
+  sel.value = existe ? anterior : (estado.madre || estado.raices[0]?.codigo || "");
+  pintarRuta();
+  $("paso-partida").classList.remove("oculto");
+  $("fs-partida").disabled = ROLES_QUE_CAPTURAN.indexOf(estado.rol) === -1;
+}
+
+$("form-partida").addEventListener("submit", async function(ev){
+  ev.preventDefault();
+  if(!estado.presupuestoId || !estado.filas.length){
+    avisar("aviso-partida","Necesitas un presupuesto abierto con estructura estándar.","error");
+    return;
+  }
+  const codigo = $("in-codigo").value.trim();
+  const descripcion = $("in-descripcion").value.trim();
+  const bruto = $("in-importe").value;
+  const padre = $("sel-padre").value || estado.madre;
+
+  if(!descripcion || bruto === ""){
+    avisar("aviso-partida","Completa importe y descripción.","error");
+    return;
+  }
+  const importe = Number(bruto);
+  if(Number.isNaN(importe)){ avisar("aviso-partida","El importe debe ser un número.","error"); return; }
+
+  $("btn-partida").disabled = true;
+  try{
+    const destino = estado.editandoCodigo
+      ? "/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/partidas/" + encodeURIComponent(estado.editandoCodigo)
+      : "/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/partidas";
+    const datos = await api(destino, {
+      method: estado.editandoCodigo ? "PUT" : "POST",
+      cuerpo: {
+        codigo: codigo || estado.editandoCodigo,
+        descripcion: descripcion,
+        importe: importe,
+        parent_codigo: padre,
+        categoria: null
+      }
+    });
+    const guardada = (datos && datos.codigo) || codigo || estado.editandoCodigo;
+    estado.recienGuardada = guardada;
+    if(estado.editandoCodigo){ avisar("aviso-partida","Partida actualizada " + guardada + ".","ok"); }
+    else { avisar("aviso-partida","Guardada " + guardada + " · " + descripcion + ".","ok"); }
+    estado.editandoCodigo = null;
+    $("btn-cancelar-edicion").classList.add("oculto");
+    $("btn-partida").textContent = "Guardar partida";
+    $("in-codigo").value = proponerCodigo($("sel-padre").value);
+    $("in-descripcion").value = "";
+    $("in-importe").value = "";
+    cadenaDe(padre).forEach(function(c){ estado.colapsados.delete(c); });
+    await refrescarMatriz();
+    $("in-descripcion").focus();
+  }catch(err){
+    avisar("aviso-partida", err.message, "error");
+  }finally{
+    $("btn-partida").disabled = false;
+  }
+});
+
+$("btn-cancelar-edicion").addEventListener("click", function(){
+  estado.editandoCodigo = null;
+  $("btn-cancelar-edicion").classList.add("oculto");
+  $("btn-partida").textContent = "Guardar partida";
+  $("in-codigo").value = proponerCodigo($("sel-padre").value);
+  $("in-descripcion").value = "";
+  $("in-importe").value = "";
+  avisar("aviso-partida", "Edición cancelada.", "nota");
+});
+
+/* ============================================================
+   Matriz
+   ============================================================ */
+$("sel-profundidad").addEventListener("change", function(){
+  estado.profundidadMax = Number($("sel-profundidad").value);
+  pintarMatriz();
+});
+$("btn-expandir").addEventListener("click", function(){ estado.colapsados.clear(); pintarMatriz(); });
+$("btn-contraer").addEventListener("click", function(){
+  estado.colapsados = new Set();
+  estado.nodos.forEach(function(n){ if(n.hijos.length && n.nivel > 0) estado.colapsados.add(n.codigo); });
+  pintarMatriz();
+});
+
+async function refrescarMatriz(){
+  if(!estado.presupuestoId) return;
+  try{
+    const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/matriz");
+    estado.presupuesto = Object.assign({}, estado.presupuesto, datos);
+    estado.filas = Array.isArray(datos.filas) ? datos.filas : [];
+    estado.aprobado = Boolean(datos.aprobado);
+    estado.aprobadoPor = datos.aprobado_por || null;
+    construirArbol();
+
+    if(datos.nombre) $("ctx-nombre").textContent = datos.nombre;
+    if(datos.ejercicio != null) $("ctx-ejercicio").textContent = datos.ejercicio;
+
+    if(datos.estructura_madre) estado.madre = datos.estructura_madre;
+    pintarMatriz();
+    pintarResumen();
+    pintarSelectorPadre();
+    if(!$('paso-partida').classList.contains('oculto')) $('paso-partida').classList.remove('oculto');
+    if(!$("in-codigo").value) $("in-codigo").value = proponerCodigo($("sel-padre").value);
+    avisar("aviso-matriz","");
+  }catch(err){
+    avisar("aviso-matriz","No se pudo actualizar la matriz: " + err.message, "error");
+  }
+}
+
+function reiniciarMatriz(){
+  estado.filas = []; estado.nodos = new Map(); estado.raices = [];
+  $("titulo-matriz").textContent = "Sin presupuesto abierto";
+  $("matriz-meta").textContent = "Los acumulados los calcula el backend.";
+  $("zona-aprobacion").innerHTML = "";
+  const cuerpo = $("matriz-cuerpo");
+  cuerpo.innerHTML = "";
+  cuerpo.appendChild(bloqueVacio("Hoja en blanco",
+    "Entra con tu usuario y crea un presupuesto. La estructura estándar peruana estará lista para abrir partidas y subpartidas sin límite de niveles."));
+}
+
+function bloqueVacio(marca, texto){
+  const caja = document.createElement("div"); caja.className = "vacio";
+  const m = document.createElement("p"); m.className = "marca-agua"; m.textContent = marca;
+  const p = document.createElement("p"); p.textContent = texto;
+  caja.appendChild(m); caja.appendChild(p);
+  return caja;
+}
+
+function trozo(texto, clase){
+  const s = document.createElement("span");
+  s.className = clase; s.textContent = texto;
+  return s;
+}
+
+/* El código se compone atenuando lo heredado del padre y
+   destacando el segmento que aporta este nodo. */
+function componerCodigo(codigo){
+  const cont = document.createElement("span");
+  cont.className = "cod";
+  const partes = codigo.split(".");
+  const base = partes[0];
+  const anidado = partes.length > 1;
+
+  if(/^\d{4}$/.test(base)){
+    let sig = 4;
+    if(base.slice(1) === "000") sig = 1;
+    else if(base.slice(2) === "00") sig = 2;
+    else if(base.charAt(3) === "0") sig = 3;
+    const heredado = base.slice(0, sig - 1);
+    const propio = base.charAt(sig - 1);
+    const relleno = base.slice(sig);
+    if(heredado) cont.appendChild(trozo(heredado,"heredado"));
+    cont.appendChild(trozo(propio, anidado ? "heredado" : "propio"));
+    if(relleno) cont.appendChild(trozo(relleno,"relleno"));
+  }else{
+    cont.appendChild(trozo(base, anidado ? "heredado" : "propio"));
+  }
+  for(let i = 1; i < partes.length; i++){
+    cont.appendChild(trozo(".","sep"));
+    cont.appendChild(trozo(partes[i], i === partes.length - 1 ? "propio" : "heredado"));
+  }
+  return cont;
+}
+
+function pintarMatriz(){
+  const p = estado.presupuesto || {};
+  $("titulo-matriz").textContent = p.nombre || "Presupuesto";
+
+  let hondo = 0;
+  estado.nodos.forEach(function(n){ if(n.nivel + 1 > hondo) hondo = n.nivel + 1; });
+  const meta = [];
+  if(p.ejercicio != null) meta.push("Ejercicio " + p.ejercicio);
+  if(estado.madre) meta.push("Madre " + estado.madre);
+  meta.push(estado.filas.length + (estado.filas.length === 1 ? " fila" : " filas"));
+  if(hondo) meta.push(hondo + (hondo === 1 ? " nivel" : " niveles"));
+  $("matriz-meta").textContent = meta.join("  ·  ");
+
+  pintarAprobacion();
+
+  const cuerpo = $("matriz-cuerpo");
+  cuerpo.innerHTML = "";
+
+  if(!estado.filas.length){
+    cuerpo.appendChild(bloqueVacio("Sin partidas",
+      estado.madre
+        ? "La estructura estándar está lista. Registra la primera partida y, con el botón + de cada fila, sigue abriendo subpartidas dentro de ella."
+        : "Crea un presupuesto para empezar a registrar partidas."));
+    return;
+  }
+
+  const marco = document.createElement("div");
+  marco.className = "tabla";
+
+  const cabecera = document.createElement("div");
+  cabecera.className = "encabezado";
+  const c1 = document.createElement("span"); c1.textContent = "Código y concepto";
+  const c2 = document.createElement("span"); c2.className = "col-nivel"; c2.textContent = "Nivel";
+  const c3 = document.createElement("span"); c3.className = "der"; c3.textContent = "Importe acumulado";
+  const c4 = document.createElement("span"); c4.setAttribute("aria-hidden","true");
+  cabecera.appendChild(c1); cabecera.appendChild(c2); cabecera.appendChild(c3); cabecera.appendChild(c4);
+  marco.appendChild(cabecera);
+
+  const lista = document.createElement("ul");
+  lista.className = "filas";
+  lista.setAttribute("role","tree");
+  lista.setAttribute("aria-label","Partidas anidadas del presupuesto");
+
+  const puedeCapturar = ROLES_QUE_CAPTURAN.indexOf(estado.rol) !== -1 && Boolean(estado.presupuestoId);
+
+  const recorrer = function(nodo, ramaViva){
+    if(nodo.nivel + 1 > estado.profundidadMax) return;
+    lista.appendChild(fila(nodo, ramaViva, puedeCapturar));
+    if(estado.colapsados.has(nodo.codigo)) return;
+    nodo.hijos.forEach(function(h, i){
+      recorrer(h, ramaViva.concat([i < nodo.hijos.length - 1]));
+    });
+  };
+  estado.raices.forEach(function(r){ recorrer(r, []); });
+
+  marco.appendChild(lista);
+  cuerpo.appendChild(marco);
+
+  const nMadre = estado.nodos.get(estado.madre);
+  if(nMadre){
+    const cierre = document.createElement("div");
+    cierre.className = "cierre";
+    const et = document.createElement("span");
+    et.className = "etiqueta";
+    et.textContent = "Total capítulo " + estado.madre + (estado.madreDescripcion ? " · " + estado.madreDescripcion : "");
+    const tot = document.createElement("span");
+    tot.className = "total";
+    const v = nMadre.fila.importe;
+    tot.textContent = typeof v === "number" ? dinero.format(v) : String(v);
+    cierre.appendChild(et);
+    cierre.appendChild(tot);
+    cierre.appendChild(document.createElement("span"));
+    cuerpo.appendChild(cierre);
+  }
+
+  estado.recienGuardada = null;
+}
+
+function pintarResumen(){
+  const total = estado.madre
+    ? estado.nodos.get(estado.madre)
+    : { fila:{ importe:Array.from(estado.nodos.values()).filter(function(n){ return !n.padre; }).reduce(function(s,n){ return s + Number(n.fila.importe || 0); },0) } };
+  const hojas = Array.from(estado.nodos.values()).filter(function(n){ return !n.hijos.length; });
+  const categorias = new Map();
+  hojas.forEach(function(n){
+    const categoria = n.fila.categoria || "Sin categoría";
+    categorias.set(categoria, (categorias.get(categoria) || 0) + Number(n.fila.importe || 0));
+  });
+  $("titulo-resumen").textContent = estado.presupuesto && estado.presupuesto.nombre
+    ? "Resumen · " + estado.presupuesto.nombre : "Resumen del presupuesto";
+  $("resumen-metricas").innerHTML = "";
+  [["Total capítulo", total ? dinero.format(total.fila.importe) : dinero.format(0)], ["Partidas finales", String(hojas.length)], ["Estado", estado.aprobado ? "Aprobado" : "En preparación"]].forEach(function(item){
+    const card = document.createElement("div"); card.className = "metric";
+    const strong = document.createElement("strong"); strong.textContent = item[1];
+    const span = document.createElement("span"); span.textContent = item[0];
+    card.appendChild(strong); card.appendChild(span); $("resumen-metricas").appendChild(card);
+  });
+  const lista = $("resumen-partidas"); lista.innerHTML = "";
+  if(!hojas.length){ const vacio = document.createElement("li"); vacio.className = "empty"; vacio.textContent = "No hay partidas registradas."; lista.appendChild(vacio); return; }
+  categorias.forEach(function(importe, categoria){
+    const fila = document.createElement("li"); fila.innerHTML = "<span></span><strong></strong>";
+    fila.children[0].textContent = categoria; fila.children[1].textContent = dinero.format(importe); lista.appendChild(fila);
+  });
+  hojas.forEach(function(n){
+    const fila = document.createElement("li"); fila.innerHTML = "<span></span><strong></strong>";
+    fila.children[0].textContent = n.codigo + " · " + (n.fila.descripcion || "Sin descripción"); fila.children[1].textContent = dinero.format(n.fila.importe); lista.appendChild(fila);
+  });
+}
+
+function seleccionarVista(nombre){
+  const matriz = nombre === "matriz";
+  const resumen = nombre === "resumen";
+  const reporte = nombre === "reporte";
+  $("vista-matriz").classList.toggle("oculto", !matriz);
+  $("vista-resumen").classList.toggle("oculto", !resumen);
+  $("vista-reporte").classList.toggle("oculto", !reporte);
+  $("tab-matriz").classList.toggle("activa", matriz); $("tab-matriz").setAttribute("aria-selected", String(matriz));
+  $("tab-resumen").classList.toggle("activa", resumen); $("tab-resumen").setAttribute("aria-selected", String(resumen));
+  $("tab-reporte").classList.toggle("activa", reporte); $("tab-reporte").setAttribute("aria-selected", String(reporte));
+  if(resumen) pintarResumen();
+  if(reporte) cargarReporte();
+}
+
+$("tab-matriz").addEventListener("click", function(){ seleccionarVista("matriz"); });
+$("tab-resumen").addEventListener("click", function(){ seleccionarVista("resumen"); });
+$("tab-reporte").addEventListener("click", function(){ seleccionarVista("reporte"); });
+
+async function cargarReporte(){
+  const categoriaSel = $("sel-reporte-categoria");
+  if(!estado.presupuestoId){
+    $("reporte-contenido").innerHTML = "<p class=\"empty\">Abre un presupuesto para ver el reporte.</p>";
+    return;
+  }
+  try{
+    const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/reporte");
+    const reporte = datos && datos.reporte ? datos.reporte : {};
+    const categorias = Object.keys(reporte).sort();
+    categoriaSel.innerHTML = "";
+    const opcionDefault = document.createElement("option");
+    opcionDefault.value = "";
+    opcionDefault.textContent = "Selecciona una categoría";
+    categoriaSel.appendChild(opcionDefault);
+    categorias.forEach(function(categoria){
+      const opcion = document.createElement("option");
+      opcion.value = categoria;
+      opcion.textContent = categoria;
+      categoriaSel.appendChild(opcion);
+    });
+    if(!categorias.length){
+      $("reporte-contenido").innerHTML = "<p class=\"empty\">No hay partidas registradas.</p>";
+      return;
+    }
+    if(!categoriaSel.value && categorias.length){ categoriaSel.value = categorias[0]; }
+    renderReporteCategoria(reporte[categoriaSel.value] || reporte[categorias[0]]);
+  }catch(err){
+    $("reporte-contenido").innerHTML = "<p class=\"empty\">No se pudo cargar el reporte.</p>";
+    avisar("aviso-matriz", err.message, "error");
+  }
+}
+
+$("sel-reporte-categoria").addEventListener("change", function(){
+  if(!estado.presupuestoId) return;
+  const datos = JSON.parse(sessionStorage.getItem("reporte_cache") || "{}");
+  const categoria = $("sel-reporte-categoria").value;
+  renderReporteCategoria(datos[categoria] || null);
+});
+
+function renderReporteCategoria(categoriaData){
+  const cont = $("reporte-contenido");
+  if(!categoriaData){
+    cont.innerHTML = "<p class=\"empty\">Selecciona una categoría.</p>";
+    return;
+  }
+  const total = Number(categoriaData.total || 0);
+  const capitulos = categoriaData.capitulos || {};
+  cont.innerHTML = "";
+
+  const resumen = document.createElement("div");
+  resumen.className = "resumen-grid";
+  const totalCard = document.createElement("div"); totalCard.className = "metric";
+  const totalTexto = document.createElement("strong"); totalTexto.textContent = dinero.format(total);
+  const totalLabel = document.createElement("span"); totalLabel.textContent = "Total " + $("sel-reporte-categoria").value;
+  totalCard.appendChild(totalTexto); totalCard.appendChild(totalLabel); resumen.appendChild(totalCard);
+
+  Object.entries(capitulos).forEach(function([capitulo, importe]){
+    const card = document.createElement("div"); card.className = "metric";
+    const icono = document.createElement("strong"); icono.textContent = dinero.format(Number(importe || 0));
+    const nombre = document.createElement("span"); nombre.textContent = "Capítulo " + capitulo;
+    card.appendChild(icono); card.appendChild(nombre); resumen.appendChild(card);
+  });
+  cont.appendChild(resumen);
+
+  const lista = document.createElement("ul");
+  lista.className = "resumen-lista";
+  (categoriaData.partidas || []).forEach(function(partida){
+    const item = document.createElement("li");
+    const titulo = document.createElement("span");
+    titulo.textContent = partida.codigo + " · " + partida.descripcion;
+    const valor = document.createElement("strong");
+    valor.textContent = dinero.format(Number(partida.importe || 0));
+    item.appendChild(titulo); item.appendChild(valor); lista.appendChild(item);
+  });
+  cont.appendChild(lista);
+}
+
+function prepararEdicion(codigo){
+  const partida = estado.nodos.get(codigo);
+  if(!partida) return;
+  estado.editandoCodigo = codigo;
+  $("btn-partida").textContent = "Actualizar partida";
+  $("btn-cancelar-edicion").classList.remove("oculto");
+  $("in-codigo").value = codigo;
+  $("in-descripcion").value = partida.fila.descripcion || "";
+  $("in-importe").value = Number(partida.fila.importe || 0);
+  const padre = partida.padre || estado.madre || "";
+  $("sel-padre").value = padre;
+  pintarRuta();
+  $("paso-partida").scrollIntoView({ behavior:"smooth", block:"center" });
+  $("in-descripcion").focus();
+}
+
+function fila(nodo, ramaViva, puedeCapturar){
+  const li = document.createElement("li");
+  li.className = "fila";
+  li.setAttribute("role","treeitem");
+  li.setAttribute("aria-level", String(nodo.nivel + 1));
+  if(estado.recienGuardada === nodo.codigo) li.classList.add("nueva");
+  if(nodo.hijos.length) li.setAttribute("aria-expanded", estado.colapsados.has(nodo.codigo) ? "false" : "true");
+
+  /* --- columna 1: rieles + pinza + código + descripción --- */
+  const rama = document.createElement("div");
+  rama.className = "rama";
+
+  const rieles = document.createElement("span");
+  rieles.className = "rieles";
+  rieles.setAttribute("aria-hidden","true");
+  for(let i = 0; i < nodo.nivel; i++){
+    const r = document.createElement("span");
+    r.className = "riel";
+    r.setAttribute("data-viva", ramaViva[i] ? "si" : "no");
+    rieles.appendChild(r);
+  }
+  rama.appendChild(rieles);
+
+  const pinza = document.createElement("button");
+  pinza.type = "button";
+  pinza.className = "pinza";
+  if(nodo.hijos.length){
+    const cerrado = estado.colapsados.has(nodo.codigo);
+    pinza.textContent = cerrado ? "+" : "\u2212";
+    pinza.setAttribute("aria-label", (cerrado ? "Desplegar " : "Contraer ") + nodo.codigo);
+    pinza.addEventListener("click", function(){
+      if(estado.colapsados.has(nodo.codigo)) estado.colapsados.delete(nodo.codigo);
+      else estado.colapsados.add(nodo.codigo);
+      pintarMatriz();
+    });
+  }else{
+    pinza.classList.add("hueca");
+    pinza.tabIndex = -1;
+    pinza.setAttribute("aria-hidden","true");
+  }
+  rama.appendChild(pinza);
+
+  const etiquetas = document.createElement("span");
+  etiquetas.className = "etiquetas";
+  etiquetas.appendChild(componerCodigo(nodo.codigo));
+  const d = document.createElement("span");
+  d.className = "desc";
+  d.textContent = (nodo.fila.descripcion || "—") + (nodo.fila.categoria ? " · " + nodo.fila.categoria : "");
+  etiquetas.appendChild(d);
+  rama.appendChild(etiquetas);
+
+  /* --- columna 2: nivel --- */
+  const nivel = document.createElement("div");
+  nivel.className = "nivel";
+  nivel.textContent = nivelVisible(nodo);
+  if(nodo.hijos.length){
+    const h = document.createElement("span");
+    h.className = "hijos";
+    h.textContent = "  ·  " + nodo.hijos.length + (nodo.hijos.length === 1 ? " hijo" : " hijos");
+    nivel.appendChild(h);
+  }
+
+  /* --- columna 3: importe --- */
+  const monto = document.createElement("div");
+  monto.className = "monto";
+  const v = nodo.fila.importe;
+  monto.textContent = typeof v === "number" ? dinero.format(v) : String(v);
+
+  /* --- columna 4: abrir subpartida dentro de esta fila --- */
+  const mas = document.createElement("button");
+  mas.type = "button";
+  mas.className = "mas";
+  mas.textContent = "+";
+  mas.setAttribute("aria-label","Registrar una subpartida dentro de " + nodo.codigo);
+  mas.title = "Registrar dentro de " + nodo.codigo;
+  mas.disabled = !puedeCapturar;
+  mas.addEventListener("click", function(){ seleccionarPadre(nodo.codigo, true); });
+
+  const editar = document.createElement("button");
+  editar.type = "button";
+  editar.className = "pluma mini";
+  editar.textContent = "Editar";
+  editar.disabled = !puedeCapturar;
+  editar.addEventListener("click", function(){ prepararEdicion(nodo.codigo); });
+
+  li.appendChild(rama);
+  li.appendChild(nivel);
+  li.appendChild(monto);
+  li.appendChild(editar);
+  li.appendChild(mas);
+  return li;
+}
+
+function pintarAprobacion(){
+  const zona = $("zona-aprobacion");
+  zona.innerHTML = "";
+  if(estado.aprobado){
+    const sello = document.createElement("span");
+    sello.className = "sello";
+    sello.textContent = "Aprobado" + (estado.aprobadoPor ? " · " + estado.aprobadoPor : "");
+    zona.appendChild(sello);
+    return;
+  }
+  if(estado.rol !== ROL_QUE_APRUEBA || !estado.presupuestoId) return;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "mini";
+  btn.textContent = "Aprobar presupuesto";
+  btn.disabled = estado.filas.length === 0;
+  btn.addEventListener("click", async function(){
+    btn.disabled = true;
+    try{
+      await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/aprobar", { method:"POST" });
+      avisar("aviso-matriz","Presupuesto aprobado.","ok");
+      await refrescarMatriz();
+    }catch(err){
+      avisar("aviso-matriz", err.message, "error");
+      btn.disabled = false;
+    }
+  });
+  zona.appendChild(btn);
+}
+
+/* ---------- arranque ---------- */
+pintarUsuariosDemo();
+comprobarSalud();
+setInterval(comprobarSalud, 60000);
+</script>
+</body>
+</html>

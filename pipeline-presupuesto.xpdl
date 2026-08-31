@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://www.wfmc.org/2009/XPDL2.2" Id="ModularBudgetPipelinePackage" Name="Pipeline de Presupuesto Modular Financiero">
+  <PackageHeader>
+    <XPDLVersion>2.2</XPDLVersion>
+    <Vendor>Gemini Notebook - Presupuesto Financiero System</Vendor>
+    <Created>2026-08-28T12:25:00-07:00</Created>
+    <Description>Flujo de proceso estandar e interconectado para un Presupuesto Maestro con sub-pipelines dinamicos estilo Matryoshka para subpartidas y partidas especificas.</Description>
+  </PackageHeader>
+  <Participants>
+    <Participant Id="DirGen" Name="Direccion General">
+      <ParticipantType Type="ROLE"/>
+    </Participant>
+    <Participant Id="DirFin" Name="Director Financiero">
+      <ParticipantType Type="ROLE"/>
+    </Participant>
+    <Participant Id="LidArea" Name="Lider de Area Operativa / Responsable de Departamento">
+      <ParticipantType Type="ROLE"/>
+    </Participant>
+    <Participant Id="IngInd" Name="Ingenieria Industrial / Operaciones">
+      <ParticipantType Type="ROLE"/>
+    </Participant>
+  </Participants>
+  <WorkflowProcesses>
+    <WorkflowProcess Id="MainBudgetProcess" Name="Flujo de Consolidacion Presupuesto Maestro">
+      <ProcessHeader>
+        <Created>2026-08-28T12:25:00-07:00</Created>
+        <Description>Secuencia logica del presupuesto operativo y financiero con validacion cruzada.</Description>
+      </ProcessHeader>
+      <Activities>
+        <Activity Id="Start" Name="Inicio del Ciclo Presupuestal Anual">
+          <Event>
+            <StartEvent/>
+          </Event>
+        </Activity>
+        <Activity Id="Act1_Ventas" Name="Formular Presupuesto de Ventas (Base)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act2_Prod" Name="Calcular Presupuesto de Produccion (Unidades = Ventas + InvFinal - InvInicial)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act3_ComMat" Name="Estimar Compras de Materia Prima Directa">
+          <Route/>
+        </Activity>
+        <Activity Id="Act4_MOD" Name="Estimar Mano de Obra Directa (MOD)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act5_GIF_OPEX" Name="Calcular Gastos Indirectos (GIF/CIF) &amp; OPEX (Y = a + bx)">
+          <Implementation>
+            <SubFlow Id="ConsolidateMatryoshkaSubflow" Execution="SYNCHR"/>
+          </Implementation>
+        </Activity>
+        <Activity Id="Act6_CostoProd" Name="Establecer Costos de Produccion Presupuestados">
+          <Route/>
+        </Activity>
+        <Activity Id="Act7_GAV" Name="Estimar Gastos de Administracion y Ventas (GAV)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act8_Efectivo" Name="Consolidar Presupuesto de Efectivo (Flujo de Caja Proyectado)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act9_FinanState" Name="Generar Estados Financieros Proyectados (Resultados, Balance, CAPEX)">
+          <Route/>
+        </Activity>
+        <Activity Id="Act10_Deviations" Name="Analisis de Desviaciones Mensual (Real vs Presupuesto)">
+          <Route/>
+        </Activity>
+        <Activity Id="End" Name="Presupuesto Ejecutado y Evaluado">
+          <Event>
+            <EndEvent/>
+          </Event>
+        </Activity>
+      </Activities>
+      <Transitions>
+        <Transition Id="Tr1" From="Start" To="Act1_Ventas"/>
+        <Transition Id="Tr2" From="Act1_Ventas" To="Act2_Prod"/>
+        <Transition Id="Tr3" From="Act2_Prod" To="Act3_ComMat"/>
+        <Transition Id="Tr4" From="Act2_Prod" To="Act4_MOD"/>
+        <Transition Id="Tr5" From="Act2_Prod" To="Act5_GIF_OPEX"/>
+        <Transition Id="Tr6" From="Act3_ComMat" To="Act6_CostoProd"/>
+        <Transition Id="Tr7" From="Act4_MOD" To="Act6_CostoProd"/>
+        <Transition Id="Tr8" From="Act5_GIF_OPEX" To="Act6_CostoProd"/>
+        <Transition Id="Tr9" From="Act1_Ventas" To="Act7_GAV"/>
+        <Transition Id="Tr10" From="Act6_CostoProd" To="Act8_Efectivo"/>
+        <Transition Id="Tr11" From="Act7_GAV" To="Act8_Efectivo"/>
+        <Transition Id="Tr12" From="Act8_Efectivo" To="Act9_FinanState"/>
+        <Transition Id="Tr13" From="Act9_FinanState" To="Act10_Deviations"/>
+        <Transition Id="Tr14" From="Act10_Deviations" To="End"/>
+      </Transitions>
+    </WorkflowProcess>
+    <WorkflowProcess Id="ConsolidateMatryoshkaSubflow" Name="Pipeline Matryoshka de Apertura Dinamica">
+      <ProcessHeader>
+        <Description>Mapea la jerarquia acumulativa estilo CONAC: Partida Específica (XXXX) -&gt; Partida Genérica (XXX0) -&gt; Concepto (XX00) -&gt; Capítulo (X000)</Description>
+      </ProcessHeader>
+      <Activities>
+        <Activity Id="SStart" Name="Creacion de Subpartida / Partida Especifica (XXXX)">
+          <Event>
+            <StartEvent/>
+          </Event>
+        </Activity>
+        <Activity Id="SAct1_Alinea" Name="Validar Alineacion Estrategica e Identificar Costo Fijo/Variable">
+          <Route/>
+        </Activity>
+        <Activity Id="SAct2_Flex" Name="Aplicar Formula de Presupuesto Flexible (Y = a + bx)">
+          <Route/>
+        </Activity>
+        <Activity Id="SAct3_Gen" Name="Acumular Datos en Partida Generica (XXX0 - Armonizada)">
+          <Route/>
+        </Activity>
+        <Activity Id="SAct4_Con" Name="Consolidar en Concepto Madre (XX00)">
+          <Route/>
+        </Activity>
+        <Activity Id="SAct5_Cap" Name="Sumarizar en Capítulo (X000 - Estructura Estandar)">
+          <Route/>
+        </Activity>
+        <Activity Id="SEnd" Name="Retornar Datos Consolidados al Pipeline de Costo Maestro">
+          <Event>
+            <EndEvent/>
+          </Event>
+        </Activity>
+      </Activities>
+      <Transitions>
+        <Transition Id="STr1" From="SStart" To="SAct1_Alinea"/>
+        <Transition Id="STr2" From="SAct1_Alinea" To="SAct2_Flex"/>
+        <Transition Id="STr3" From="SAct2_Flex" To="SAct3_Gen"/>
+        <Transition Id="STr4" From="SAct3_Gen" To="SAct4_Con"/>
+        <Transition Id="STr5" From="SAct4_Con" To="SAct5_Cap"/>
+        <Transition Id="STr6" From="SAct5_Cap" To="SEnd"/>
+      </Transitions>
+    </WorkflowProcess>
+  </WorkflowProcesses>
+</Package>
