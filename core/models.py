@@ -42,6 +42,18 @@ class PartidaPresupuestal:
     responsable: str
     parent_codigo: Optional[str] = None
     categoria: Optional[str] = None
+    clasificacion_financiera: str = "OPEX"
+
+
+@dataclass
+class MovimientoCaja:
+    id: str
+    fecha: str
+    tipo: str
+    descripcion: str
+    importe: float
+    clasificacion_financiera: str
+    partida_codigo: Optional[str] = None
 
 
 @dataclass

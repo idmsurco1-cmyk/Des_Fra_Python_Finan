@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Presupuesto Modular · MVP CONAC</title>
+<title>Presupuesto Modular · Perú · OPEX/CAPEX</title>
 <style>
 /* ============================================================
    Presupuesto Modular · MVP
@@ -21,48 +21,73 @@
    ============================================================ */
 
 :root{
-  --hoja:      #F3F5F0;
-  --panel:     #FCFDFA;
-  --pad:       #E4EDDE;
-  --regla:     #A6C1A0;
-  --regla-fina:#D6E1D1;
-  --borde:     #C6D0C1;
-  --tinta:     #16221B;
-  --tinta-2:   #5A6B5F;
-  --tinta-3:   #93A497;
-  --pluma:     #1E3E8C;
-  --sello:     #97301A;
-  --verde-ok:  #2E7D4F;
+  --hoja:      #edf2f7;
+  --hoja-2:    #f8fafc;
+  --panel:     #ffffff;
+  --panel-2:   #f2f7ff;
+  --pad:       #eaf1fb;
+  --regla:     #d6dfef;
+  --regla-fina:#e7edf8;
+  --borde:     #d4ddea;
+  --tinta:     #122033;
+  --tinta-2:   #4f6283;
+  --tinta-3:   #7a8aa0;
+  --pluma:     #1d4ed8;
+  --pluma-2:   #0f172a;
+  --sello:     #d14c3a;
+  --verde-ok:  #127c5f;
+  --azul-osc:  #0b1e42;
 
   --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  --r: 4px;
-  --sangria: 22px;   /* ancho de cada nivel de anidación */
+  --r: 14px;
+  --sangria: 22px;
 }
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:var(--hoja);color:var(--tinta);
+  background:linear-gradient(180deg, #edf4ff 0%, var(--hoja) 120px, var(--hoja) 100%);
+  color:var(--tinta);
   font-family:var(--sans);font-size:15px;line-height:1.45;
   -webkit-font-smoothing:antialiased;
 }
 :focus-visible{outline:2px solid var(--pluma);outline-offset:2px;border-radius:2px}
 .oculto{display:none !important}
-.vistas{max-width:1440px;margin:0 auto;padding:14px clamp(16px,3vw,32px) 0;display:flex;gap:8px;border-bottom:1px solid var(--borde)}
-.vista{background:transparent;color:var(--tinta-2);border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 12px}
-.vista.activa{color:var(--pluma);border-bottom-color:var(--pluma)}
-.resumen{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);padding:20px}
+.vistas{
+  max-width:1500px;margin:0 auto;padding:18px clamp(16px,3vw,32px) 0;display:flex;gap:8px;border-bottom:1px solid var(--borde);
+}
+.vista{
+  background:transparent;color:var(--tinta-2);border:0;border-bottom:2px solid transparent;border-radius:10px 10px 0 0;
+  padding:11px 16px;font-weight:600;letter-spacing:.01em;
+}
+.vista.activa{color:var(--pluma);border-bottom-color:var(--pluma);background:rgba(29,78,216,.05)}
+.resumen{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);padding:20px;box-shadow:0 10px 24px rgba(15,23,42,.05)}
 .resumen h2{margin:0;font-size:18px}.resumen-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 24px}
 .resumen-lista{list-style:none;padding:0;margin:0;border-top:1px solid var(--regla-fina)}.resumen-lista li{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--regla-fina)}
+.caja-seccion{margin-top:22px;padding-top:18px;border-top:1px solid var(--regla-fina)}
+.caja-grafico{display:grid;gap:10px;margin-top:16px}
+.caja-mes{display:grid;grid-template-columns:90px minmax(0,1fr) minmax(145px,auto);gap:12px;align-items:center;padding:10px;border-bottom:1px solid var(--regla-fina)}
+.caja-mes strong{font-family:var(--mono);font-size:12px}
+.caja-barras{display:grid;gap:5px}
+.caja-barra{height:8px;min-width:2px;border-radius:99px;background:var(--pluma)}
+.caja-barra.real{background:var(--verde-ok)}
+.caja-leyenda{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--tinta-2)}
+.caja-saldos{font-family:var(--mono);font-size:11px;text-align:right;color:var(--tinta-2)}
+.caja-tabla{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+.caja-tabla th,.caja-tabla td{text-align:right;padding:9px 7px;border-bottom:1px solid var(--regla-fina);white-space:nowrap}
+.caja-tabla th:first-child,.caja-tabla td:first-child{text-align:left}
+.caja-desborde{overflow-x:auto}
+.caja-forms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:900px){.resumen-grid{grid-template-columns:1fr}}
+@media (max-width:650px){.caja-forms{grid-template-columns:1fr}.caja-mes{grid-template-columns:70px minmax(0,1fr)}.caja-saldos{grid-column:2;text-align:left}}
 
 /* ---------- membrete ---------- */
 .membrete{
-  border-bottom:1px solid var(--borde);background:var(--panel);
-  padding:12px clamp(16px,3vw,32px);
-  display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--borde);background:rgba(255,255,255,.82);backdrop-filter:blur(10px);
+  padding:14px clamp(16px,3vw,32px);
+  display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;box-shadow:0 8px 22px rgba(15,23,42,.04);
 }
 .marca{display:flex;flex-direction:column;gap:1px;min-width:0}
 .marca strong{font-size:18px;font-weight:800;letter-spacing:-.025em}
@@ -90,16 +115,38 @@ body{
 .empuje{margin-left:auto}
 
 /* ---------- layout ---------- */
-main{padding:clamp(16px,3vw,28px) clamp(16px,3vw,32px) 8px}
-.centro{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-.ancho{max-width:1440px;margin:22px auto 0}
+main{
+  padding:clamp(16px,3vw,28px) clamp(16px,3vw,32px) 8px;
+  max-width:1500px;margin:0 auto;
+  display:flex;flex-direction:column;gap:18px;
+}
+.flujo{
+  display:grid;grid-template-columns:minmax(320px, 430px) minmax(0, 1fr);
+  gap:18px;align-items:start;
+}
+.centro{
+  display:flex;flex-direction:column;gap:16px;min-width:0;
+  width:100%;
+  position:relative;
+}
+.ancho{
+  max-width:1500px;width:100%;margin:0 auto;min-width:0;
+  max-height:calc(100vh - 320px);overflow:hidden;
+}
 
 /* ---------- paneles ---------- */
-.panel{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r)}
-.panel > .cabeza{padding:16px 20px 0;display:flex;align-items:baseline;gap:10px}
-.panel > .cabeza .n{font-family:var(--mono);font-size:11px;color:var(--pluma);letter-spacing:.1em}
+.panel{
+  background:linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  border:1px solid var(--borde);border-radius:var(--r);
+  box-shadow:0 12px 26px rgba(15,23,42,.06);
+}
+.panel > .cabeza{padding:18px 22px 0;display:flex;align-items:baseline;gap:10px}
+.panel > .cabeza .n{
+  font-family:var(--mono);font-size:11px;color:var(--pluma);letter-spacing:.1em;
+  background:rgba(29,78,216,.08);padding:6px 8px;border-radius:999px;
+}
 .panel h2{margin:0;font-size:16px;font-weight:750;letter-spacing:-.015em}
-.panel .cuerpo{padding:14px 20px 20px}
+.panel .cuerpo{padding:16px 22px 22px}
 .apunte{margin:6px 0 0;font-size:13px;color:var(--tinta-2)}
 
 .preparacion summary{list-style:none;cursor:pointer;padding:14px 20px;display:flex;align-items:center;gap:10px}
@@ -137,13 +184,14 @@ select{appearance:none;padding-right:22px;
 .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
 button{
   font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.11em;
-  padding:10px 16px;border-radius:2px;border:1.5px solid var(--tinta);
-  background:var(--tinta);color:var(--hoja);cursor:pointer;
-  transition:background .15s ease,border-color .15s ease,color .15s ease;
+  padding:10px 16px;border-radius:10px;border:1px solid transparent;
+  background:linear-gradient(180deg, var(--pluma) 0%, #1e3fae 100%);color:var(--hoja);cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 8px 16px rgba(29,78,216,.18);
 }
-button:hover:not(:disabled){background:var(--pluma);border-color:var(--pluma)}
-button.pluma{background:transparent;color:var(--tinta);border-color:var(--borde)}
-button.pluma:hover:not(:disabled){background:transparent;color:var(--pluma);border-color:var(--pluma)}
+button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 12px 22px rgba(29,78,216,.22)}
+button.pluma{background:transparent;color:var(--tinta);border-color:var(--borde);box-shadow:none}
+button.pluma:hover:not(:disabled){background:var(--panel-2);color:var(--pluma);border-color:var(--pluma);box-shadow:none}
 button:disabled{cursor:not-allowed;opacity:.45}
 button.mini{padding:6px 10px;font-size:10px}
 .demo{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
@@ -166,10 +214,15 @@ button.mini{padding:6px 10px;font-size:10px}
 .aviso[data-tipo="nota"]{border-left-color:var(--pluma);color:var(--tinta-2)}
 
 /* ---------- matriz ---------- */
-.matriz{background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);overflow:hidden}
+.matriz{
+  background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border:1px solid var(--borde);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;min-height:0;height:100%;
+  box-shadow:0 12px 26px rgba(15,23,42,.06);
+}
 .matriz > .cabeza{
-  padding:16px 20px;border-bottom:1px solid var(--regla);
+  padding:18px 22px;border-bottom:1px solid var(--regla);
   display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+  background:linear-gradient(180deg, rgba(234,241,251,.8) 0%, rgba(255,255,255,0) 100%);
 }
 .matriz h2{margin:2px 0 0;font-size:18px;font-weight:800;letter-spacing:-.02em}
 .matriz .meta{font-family:var(--mono);font-size:11px;color:var(--tinta-2);letter-spacing:.05em;margin:2px 0 0}
@@ -177,6 +230,10 @@ button.mini{padding:6px 10px;font-size:10px}
 .mandos label{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--tinta-2)}
 .mandos select{width:auto;border-bottom-color:var(--regla);font-family:var(--mono);font-size:12px;padding:4px 20px 4px 2px}
 
+#matriz-cuerpo{
+  overflow:auto;max-height:58vh;min-height:300px;
+  border-top:1px solid var(--regla-fina);
+}
 .tabla{overflow-x:auto}
 .encabezado,.fila{
   display:grid;
@@ -248,6 +305,11 @@ button.mini{padding:6px 10px;font-size:10px}
 .pie{max-width:1440px;margin:0 auto;padding:18px clamp(16px,3vw,32px) 40px;font-size:12.5px;color:var(--tinta-2)}
 .pie ul{margin:6px 0 0;padding-left:18px}
 
+@media (max-width:1100px){
+  .centro,.ancho{max-height:none;overflow:visible}
+  #matriz-cuerpo{max-height:60vh}
+}
+
 @media (max-width:900px){
   :root{--sangria:15px}
   .encabezado,.fila{grid-template-columns:minmax(240px,1fr) 128px 34px;padding-left:14px;padding-right:14px;gap:10px}
@@ -267,7 +329,7 @@ button.mini{padding:6px 10px;font-size:10px}
 
 <header class="membrete">
   <div class="marca">
-    <span class="eyebrow">MVP · Clasificador CONAC</span>
+    <span class="eyebrow">MVP · Catálogo financiero Perú · OPEX/CAPEX</span>
     <strong>Presupuesto Modular</strong>
   </div>
   <div class="sesion">
@@ -292,70 +354,71 @@ button.mini{padding:6px 10px;font-size:10px}
   <button type="button" class="vista activa" id="tab-matriz" aria-selected="true">Matriz</button>
   <button type="button" class="vista" id="tab-resumen" aria-selected="false">Resumen</button>
   <button type="button" class="vista" id="tab-reporte" aria-selected="false">Reporte</button>
+  <button type="button" class="vista" id="tab-caja" aria-selected="false">Flujo de caja</button>
 </nav>
 
 <main>
-  <!-- ============ COLUMNA CENTRAL: preparación + captura ============ -->
-  <div class="centro">
-
-    <!-- Sesión -->
-    <section class="panel" id="paso-sesion">
-      <div class="cabeza"><span class="n">01</span><h2>Entrar</h2></div>
-      <div class="cuerpo">
-        <p class="apunte" style="margin:0 0 16px">Tu rol llega desde el backend y decide qué puedes registrar.</p>
-        <form id="form-login" novalidate>
-          <div class="dos">
-            <label><span class="rotulo">Usuario</span>
-              <input type="text" id="in-usuario" autocomplete="username" spellcheck="false"></label>
-            <label><span class="rotulo">Contraseña</span>
-              <input type="password" id="in-contrasena" autocomplete="current-password"></label>
-          </div>
-          <div class="acciones"><button type="submit" id="btn-entrar">Entrar</button></div>
-        </form>
-        <div class="demo" id="usuarios-demo" aria-label="Usuarios de prueba"></div>
-        <p class="aviso" id="aviso-sesion" role="status" aria-live="polite"></p>
-      </div>
-    </section>
-
-    <!-- Preparación: presupuesto + estructura madre -->
-    <details class="panel preparacion oculto" id="preparacion">
-      <summary>
-        <span class="n">02</span>
-        <h2>Presupuesto y estructura madre</h2>
-        <span class="flecha">&#9656;</span>
-      </summary>
-
-      <div class="bloque">
-        <p class="titulo">Abrir o crear</p>
-        <fieldset disabled id="fs-presupuesto">
-          <div class="campos">
-            <label><span class="rotulo">Presupuestos de esta sesión</span>
-              <select id="sel-presupuestos"><option value="">— ninguno seleccionado —</option></select></label>
-          </div>
-          <div class="acciones"><button type="button" class="pluma" id="btn-abrir">Abrir seleccionado</button></div>
-
-          <div class="campos" style="margin-top:22px">
-            <div class="tres">
-              <label><span class="rotulo">Nombre nuevo</span>
-                <input type="text" id="in-nombre" value="Presupuesto 2026"></label>
-              <label><span class="rotulo">Ejercicio</span>
-                <input type="number" class="cifra" id="in-ejercicio" value="2026"></label>
-              <label><span class="rotulo">Responsable</span>
-                <input type="text" id="in-rol" value="—" readonly></label>
+  <div class="flujo">
+    <div class="centro">
+      <!-- Sesión -->
+      <section class="panel" id="paso-sesion">
+        <div class="cabeza"><span class="n">01</span><h2>Entrar</h2></div>
+        <div class="cuerpo">
+          <p class="apunte" style="margin:0 0 16px">Tu rol llega desde el backend y decide qué puedes registrar.</p>
+          <form id="form-login" novalidate>
+            <div class="dos">
+              <label><span class="rotulo">Usuario</span>
+                <input type="text" id="in-usuario" autocomplete="username" spellcheck="false"></label>
+              <label><span class="rotulo">Contraseña</span>
+                <input type="password" id="in-contrasena" autocomplete="current-password"></label>
             </div>
-          </div>
-          <div class="acciones"><button type="button" id="btn-crear">Crear presupuesto</button></div>
-        </fieldset>
-        <p class="aviso" id="aviso-presupuesto" role="status" aria-live="polite"></p>
-      </div>
+            <div class="acciones"><button type="submit" id="btn-entrar">Entrar</button></div>
+          </form>
+          <div class="demo" id="usuarios-demo" aria-label="Usuarios de prueba"></div>
+          <p class="aviso" id="aviso-sesion" role="status" aria-live="polite"></p>
+        </div>
+      </section>
 
-      <div class="bloque">
-        <p class="titulo">Estructura peruana</p>
-        <p class="apunte">La matriz carga automáticamente el clasificador estándar. Elige cualquier capítulo o partida como contenedor para abrir un nuevo nivel.</p>
-      </div>
-    </details>
+      <!-- Preparación: presupuesto + estructura madre -->
+      <details class="panel preparacion oculto" id="preparacion">
+        <summary>
+          <span class="n">02</span>
+          <h2>Presupuesto y estructura madre</h2>
+          <span class="flecha">&#9656;</span>
+        </summary>
 
-    <!-- Captura: el centro de la pantalla -->
+        <div class="bloque">
+          <p class="titulo">Abrir o crear</p>
+          <fieldset disabled id="fs-presupuesto">
+            <div class="campos">
+              <label><span class="rotulo">Presupuestos de esta sesión</span>
+                <select id="sel-presupuestos"><option value="">— ninguno seleccionado —</option></select></label>
+            </div>
+            <div class="acciones"><button type="button" class="pluma" id="btn-abrir">Abrir seleccionado</button></div>
+
+            <div class="campos" style="margin-top:22px">
+              <div class="tres">
+                <label><span class="rotulo">Nombre nuevo</span>
+                  <input type="text" id="in-nombre" value="Presupuesto 2026"></label>
+                <label><span class="rotulo">Ejercicio</span>
+                  <input type="number" class="cifra" id="in-ejercicio" value="2026"></label>
+                <label><span class="rotulo">Responsable</span>
+                  <input type="text" id="in-rol" value="—" readonly></label>
+              </div>
+            </div>
+            <div class="acciones"><button type="button" id="btn-crear">Crear presupuesto</button></div>
+          </fieldset>
+          <p class="aviso" id="aviso-presupuesto" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="bloque">
+          <p class="titulo">Estructura peruana</p>
+          <p class="apunte">La matriz carga automáticamente el clasificador estándar. Elige cualquier capítulo o partida como contenedor para abrir un nuevo nivel.</p>
+        </div>
+      </details>
+    </div>
+
+    <!-- Captura: al lado derecho -->
     <section class="panel oculto" id="paso-partida">
       <div class="cabeza"><span class="n">03</span><h2>Registrar partida</h2></div>
       <div class="cuerpo">
@@ -378,6 +441,11 @@ button.mini{padding:6px 10px;font-size:10px}
                 <label><span class="rotulo">Descripción</span>
                   <input type="text" id="in-descripcion" autocomplete="off"></label>
               </div>
+              <label><span class="rotulo">Clasificación financiera</span>
+                <select id="in-clasificacion-financiera">
+                  <option value="OPEX">OPEX · gasto operativo</option>
+                  <option value="CAPEX">CAPEX · inversión de capital</option>
+                </select></label>
             </div>
             <div class="acciones">
               <button type="submit" id="btn-partida">Guardar partida</button>
@@ -457,13 +525,96 @@ button.mini{padding:6px 10px;font-size:10px}
       <div id="reporte-contenido" style="margin-top:18px;"></div>
     </section>
   </div>
+
+  <div class="ancho oculto" id="vista-caja">
+    <section class="resumen" aria-labelledby="titulo-caja">
+      <span class="eyebrow">Planificación y ejecución · <span id="caja-ejercicio">—</span></span>
+      <h2 id="titulo-caja">Tablero de flujo de caja</h2>
+      <p class="apunte">El saldo proyectado usa ingresos previstos y egresos presupuestados; el saldo real acumula los movimientos registrados desde el saldo inicial.</p>
+      <div class="resumen-grid" id="caja-metricas"></div>
+
+      <div class="caja-forms">
+        <form id="form-saldo-inicial" class="panel">
+          <div class="cuerpo">
+            <h2>Saldo inicial</h2>
+            <label><span class="rotulo">Saldo de caja al inicio del ejercicio</span>
+              <input type="number" id="caja-saldo" min="0" step="0.01" required></label>
+            <div class="acciones"><button type="submit">Guardar saldo</button></div>
+          </div>
+        </form>
+        <form id="form-ingreso-proyectado" class="panel">
+          <div class="cuerpo">
+            <h2>Ingreso previsto</h2>
+            <div class="dos">
+              <label><span class="rotulo">Mes</span><select id="caja-mes-ingreso"></select></label>
+              <label><span class="rotulo">Importe</span><input type="number" id="caja-ingreso-previsto" min="0" step="0.01" required></label>
+            </div>
+            <div class="acciones"><button type="submit">Programar ingreso</button></div>
+          </div>
+        </form>
+        <form id="form-presupuesto-mensual" class="panel">
+          <div class="cuerpo">
+            <h2>Programar partida OPEX/CAPEX</h2>
+            <div class="campos">
+              <label><span class="rotulo">Partida</span><select id="caja-partida"></select></label>
+              <div class="dos">
+                <label><span class="rotulo">Mes</span><select id="caja-mes-partida"></select></label>
+                <label><span class="rotulo">Importe del mes</span><input type="number" id="caja-importe-mensual" min="0" step="0.01" required></label>
+              </div>
+            </div>
+            <div class="acciones"><button type="submit">Guardar programación</button></div>
+          </div>
+        </form>
+        <form id="form-movimiento-caja" class="panel">
+          <div class="cuerpo">
+            <h2>Registrar movimiento real</h2>
+            <div class="campos">
+              <div class="dos">
+                <label><span class="rotulo">Fecha</span><input type="date" id="caja-fecha" required></label>
+                <label><span class="rotulo">Tipo</span>
+                  <select id="caja-tipo">
+                    <option value="ingreso">Ingreso</option>
+                    <option value="egreso">Egreso</option>
+                  </select></label>
+              </div>
+              <div class="dos">
+                <label><span class="rotulo">Clasificación</span>
+                  <select id="caja-clasificacion">
+                    <option value="OPEX">OPEX</option>
+                    <option value="CAPEX">CAPEX</option>
+                  </select></label>
+                <label><span class="rotulo">Partida asociada (opcional)</span><select id="caja-mov-partida"></select></label>
+              </div>
+              <div class="dos">
+                <label><span class="rotulo">Descripción</span><input type="text" id="caja-descripcion" required></label>
+                <label><span class="rotulo">Importe</span><input type="number" id="caja-importe-real" min="0.01" step="0.01" required></label>
+              </div>
+            </div>
+            <div class="acciones"><button type="submit">Registrar movimiento</button></div>
+          </div>
+        </form>
+      </div>
+      <p class="aviso" id="aviso-caja" role="status" aria-live="polite"></p>
+
+      <div class="caja-seccion">
+        <h2>Movimiento mensual de caja</h2>
+        <div class="caja-leyenda"><span>Azul: egreso presupuestado</span><span>Verde: egreso real</span></div>
+        <div class="caja-grafico" id="caja-grafico"></div>
+        <div class="caja-desborde" id="caja-tabla"></div>
+      </div>
+      <div class="caja-seccion">
+        <h2>Movimientos registrados</h2>
+        <ul class="resumen-lista" id="caja-movimientos"><li class="empty">Aún no hay movimientos reales.</li></ul>
+      </div>
+    </section>
+  </div>
 </main>
 
 <footer class="pie">
   <span class="eyebrow">Alcance de esta versión</span>
   <ul>
     <li>El almacenamiento es en memoria: al reiniciar el backend no quedan datos previos.</li>
-    <li>Todavía no hay edición ni borrado de partidas, ni estados financieros, flujo de efectivo o desviaciones.</li>
+    <li>El flujo de caja compara ingresos previstos y egresos presupuestados con movimientos reales; todavía no incluye integración bancaria ni persistencia.</li>
     <li>Los permisos se aplican en el backend; esta pantalla solo refleja lo que responde.</li>
   </ul>
 </footer>
@@ -480,6 +631,7 @@ const estado = {
   token:null, usuario:null, rol:null,
   presupuestoId:null, presupuesto:null,
   capitulos:[], madre:null, madreDescripcion:"",
+  flujoCaja:null, reporteActual:{},
   filas:[], nodos:new Map(), raices:[],
   colapsados:new Set(), profundidadMax:99,
   aprobado:false, aprobadoPor:null,
@@ -497,7 +649,7 @@ const USUARIOS_DEMO = [
 ];
 const NIVELES_BASE = ["Capitulo","Concepto","Partida generica","Partida especifica"];
 
-const dinero = new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN" });
+const dinero = new Intl.NumberFormat("es-PE", { style:"currency", currency:"PEN" });
 const $ = (id) => document.getElementById(id);
 
 /* ---------- capa HTTP ---------- */
@@ -528,8 +680,8 @@ $("form-login").addEventListener("submit", async function(ev){
   try{ const datos = await api("/api/login", { method:"POST", cuerpo:{ usuario:usuario, contrasena:contrasena } }); estado.token = datos.token; estado.usuario = datos.usuario || usuario; estado.rol = datos.rol; tomarSesion(); await cargarPresupuestos(); avisar("aviso-presupuesto","Sesión iniciada como " + estado.rol + ". Abre un presupuesto o crea uno nuevo.","ok"); }
   catch(err){ avisar("aviso-sesion", err.message, "error"); } finally{ $("btn-entrar").disabled = false; }
 });
-function tomarSesion(){ $("sesion-usuario").textContent = estado.usuario; $("sesion-rol").textContent = estado.rol; $("tarjeta-sesion").classList.remove("oculto"); $("btn-salir").classList.remove("oculto"); $("paso-sesion").classList.add("oculto"); $("preparacion").classList.remove("oculto"); $("preparacion").open = true; $("riel-contexto").classList.remove("oculto"); $("in-rol").value = estado.rol; $("ctx-rol").textContent = estado.rol; $("fs-presupuesto").disabled = false; avisar("aviso-sesion", ""); }
-$("btn-salir").addEventListener("click", function(){ estado.token=null; estado.usuario=null; estado.rol=null; estado.presupuestoId=null; estado.presupuesto=null; estado.madre=null; estado.madreDescripcion=""; estado.filas=[]; estado.nodos=new Map(); estado.raices=[]; estado.colapsados=new Set(); estado.aprobado=false; estado.aprobadoPor=null; estado.recienGuardada=null; $("tarjeta-sesion").classList.add("oculto"); $("btn-salir").classList.add("oculto"); $("paso-sesion").classList.remove("oculto"); $("preparacion").classList.add("oculto"); $("paso-partida").classList.add("oculto"); $("riel-contexto").classList.add("oculto"); $("in-contrasena").value=""; $("sel-presupuestos").length=1; $("fs-presupuesto").disabled=true; $("fs-partida").disabled=true; limpiarAvisos(); reiniciarMatriz(); });
+function tomarSesion(){ $("sesion-usuario").textContent = estado.usuario; $("sesion-rol").textContent = estado.rol; $("tarjeta-sesion").classList.remove("oculto"); $("btn-salir").classList.remove("oculto"); $("paso-sesion").classList.add("oculto"); $("preparacion").classList.remove("oculto"); $("preparacion").open = true; $("riel-contexto").classList.remove("oculto"); $("in-rol").value = estado.rol; $("ctx-rol").textContent = estado.rol; $("fs-presupuesto").disabled = false; $("btn-crear").disabled = ROLES_QUE_CAPTURAN.indexOf(estado.rol) === -1; avisar("aviso-sesion", ""); }
+$("btn-salir").addEventListener("click", function(){ estado.token=null; estado.usuario=null; estado.rol=null; estado.presupuestoId=null; estado.presupuesto=null; estado.madre=null; estado.madreDescripcion=""; estado.filas=[]; estado.nodos=new Map(); estado.raices=[]; estado.colapsados=new Set(); estado.aprobado=false; estado.aprobadoPor=null; estado.recienGuardada=null; estado.flujoCaja=null; estado.reporteActual={}; $("tarjeta-sesion").classList.add("oculto"); $("btn-salir").classList.add("oculto"); $("paso-sesion").classList.remove("oculto"); $("preparacion").classList.add("oculto"); $("paso-partida").classList.add("oculto"); $("riel-contexto").classList.add("oculto"); $("in-contrasena").value=""; $("sel-presupuestos").length=1; $("fs-presupuesto").disabled=true; $("fs-partida").disabled=true; limpiarAvisos(); reiniciarMatriz(); });
 $("btn-ajustes").addEventListener("click", function(){
   $("preparacion").open = true;
   $("preparacion").scrollIntoView({ behavior:"smooth", block:"center" });
@@ -597,6 +749,7 @@ function adoptarPresupuesto(datos){
   estado.nodos = new Map();
   estado.raices = [];
   estado.colapsados = new Set();
+  estado.flujoCaja = null;
   $("ctx-nombre").textContent = datos.nombre || "—";
   $("ctx-ejercicio").textContent = datos.ejercicio != null ? datos.ejercicio : "—";
   $("ctx-madre").textContent = "Perú · estándar";
@@ -697,24 +850,22 @@ function pintarRuta(){
   $("ruta-txt").textContent = desc + " · la nueva partida quedará en el nivel " + nivel + " del árbol.";
 }
 
-/* Propone el siguiente código libre dentro del contenedor:
-   · en el capítulo, una partida específica de cuatro dígitos que no termine en 0
-   · en cualquier otro nodo, el consecutivo siguiente respetando el
-     formato que ya usan sus hermanos (.1 o .01) */
+/* Propone la siguiente partida específica del capítulo o una subpartida .10. */
 function proponerCodigo(padre){
   const contenedor = padre || estado.madre || (estado.filas[0] && estado.filas[0].codigo);
   if(!contenedor) return "";
   const usados = new Set(estado.filas.map(function(f){ return f.codigo; }));
 
-  const esPadre = !contenedor.includes(".");
-  if(esPadre){
-    let n = 10;
+  const esCapitulo = contenedor === estado.madre && /^\d{4}$/.test(contenedor);
+  if(esCapitulo){
+    let n = 1;
     while(n <= 999){
-      const candidato = contenedor + "." + String(n);
+      const candidato = contenedor.charAt(0) + String(n).padStart(3, "0");
+      if(candidato.endsWith("0")){ n++; continue; }
       if(!usados.has(candidato)) return candidato;
-      n += 10;
+      n++;
     }
-    return contenedor + ".10";
+    return "";
   }
 
   const base = contenedor;
@@ -783,7 +934,8 @@ $("form-partida").addEventListener("submit", async function(ev){
         descripcion: descripcion,
         importe: importe,
         parent_codigo: padre,
-        categoria: null
+        categoria: null,
+        clasificacion_financiera: $("in-clasificacion-financiera").value
       }
     });
     const guardada = (datos && datos.codigo) || codigo || estado.editandoCodigo;
@@ -796,6 +948,7 @@ $("form-partida").addEventListener("submit", async function(ev){
     $("in-codigo").value = proponerCodigo($("sel-padre").value);
     $("in-descripcion").value = "";
     $("in-importe").value = "";
+    $("in-clasificacion-financiera").value = "OPEX";
     cadenaDe(padre).forEach(function(c){ estado.colapsados.delete(c); });
     await refrescarMatriz();
     $("in-descripcion").focus();
@@ -813,6 +966,7 @@ $("btn-cancelar-edicion").addEventListener("click", function(){
   $("in-codigo").value = proponerCodigo($("sel-padre").value);
   $("in-descripcion").value = "";
   $("in-importe").value = "";
+  $("in-clasificacion-financiera").value = "OPEX";
   avisar("aviso-partida", "Edición cancelada.", "nota");
 });
 
@@ -847,6 +1001,7 @@ async function refrescarMatriz(){
     pintarMatriz();
     pintarResumen();
     pintarSelectorPadre();
+    await cargarFlujoCaja();
     if(!$('paso-partida').classList.contains('oculto')) $('paso-partida').classList.remove('oculto');
     if(!$("in-codigo").value) $("in-codigo").value = proponerCodigo($("sel-padre").value);
     avisar("aviso-matriz","");
@@ -1023,19 +1178,24 @@ function seleccionarVista(nombre){
   const matriz = nombre === "matriz";
   const resumen = nombre === "resumen";
   const reporte = nombre === "reporte";
+  const caja = nombre === "caja";
   $("vista-matriz").classList.toggle("oculto", !matriz);
   $("vista-resumen").classList.toggle("oculto", !resumen);
   $("vista-reporte").classList.toggle("oculto", !reporte);
+  $("vista-caja").classList.toggle("oculto", !caja);
   $("tab-matriz").classList.toggle("activa", matriz); $("tab-matriz").setAttribute("aria-selected", String(matriz));
   $("tab-resumen").classList.toggle("activa", resumen); $("tab-resumen").setAttribute("aria-selected", String(resumen));
   $("tab-reporte").classList.toggle("activa", reporte); $("tab-reporte").setAttribute("aria-selected", String(reporte));
+  $("tab-caja").classList.toggle("activa", caja); $("tab-caja").setAttribute("aria-selected", String(caja));
   if(resumen) pintarResumen();
   if(reporte) cargarReporte();
+  if(caja) cargarFlujoCaja();
 }
 
 $("tab-matriz").addEventListener("click", function(){ seleccionarVista("matriz"); });
 $("tab-resumen").addEventListener("click", function(){ seleccionarVista("resumen"); });
 $("tab-reporte").addEventListener("click", function(){ seleccionarVista("reporte"); });
+$("tab-caja").addEventListener("click", function(){ seleccionarVista("caja"); });
 
 async function cargarReporte(){
   const categoriaSel = $("sel-reporte-categoria");
@@ -1048,6 +1208,7 @@ async function cargarReporte(){
     const vista = vistaSel.value || "financiera";
     const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/reporte?vista=" + encodeURIComponent(vista));
     const reporte = datos && datos.reporte ? datos.reporte : {};
+    estado.reporteActual = reporte;
     const categorias = Object.keys(reporte).sort();
     categoriaSel.innerHTML = "";
     const opcionDefault = document.createElement("option");
@@ -1078,9 +1239,8 @@ $("sel-reporte-vista").addEventListener("change", function(){
 
 $("sel-reporte-categoria").addEventListener("change", function(){
   if(!estado.presupuestoId) return;
-  const datos = JSON.parse(sessionStorage.getItem("reporte_cache") || "{}");
   const categoria = $("sel-reporte-categoria").value;
-  renderReporteCategoria(datos[categoria] || null);
+  renderReporteCategoria(estado.reporteActual[categoria] || null);
 });
 
 function renderReporteCategoria(categoriaData){
@@ -1130,6 +1290,7 @@ function prepararEdicion(codigo){
   $("in-codigo").value = codigo;
   $("in-descripcion").value = partida.fila.descripcion || "";
   $("in-importe").value = Number(partida.fila.importe || 0);
+  $("in-clasificacion-financiera").value = partida.fila.clasificacion_financiera || "OPEX";
   const padre = partida.padre || estado.madre || "";
   $("sel-padre").value = padre;
   pintarRuta();
@@ -1184,7 +1345,9 @@ function fila(nodo, ramaViva, puedeCapturar){
   etiquetas.appendChild(componerCodigo(nodo.codigo));
   const d = document.createElement("span");
   d.className = "desc";
-  d.textContent = (nodo.fila.descripcion || "—") + (nodo.fila.categoria ? " · " + nodo.fila.categoria : "");
+  d.textContent = (nodo.fila.descripcion || "—")
+  + (nodo.fila.categoria ? " · " + nodo.fila.categoria : "")
+  + (nodo.fila.clasificacion_financiera ? " · " + nodo.fila.clasificacion_financiera : "");
   etiquetas.appendChild(d);
   rama.appendChild(etiquetas);
 
@@ -1261,7 +1424,277 @@ function pintarAprobacion(){
   zona.appendChild(btn);
 }
 
+const NOMBRES_MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+function llenarMeses(id){
+  const selector = $(id);
+  selector.innerHTML = "";
+  NOMBRES_MESES.forEach(function(nombre, indice){
+    const opcion = document.createElement("option");
+    opcion.value = String(indice + 1);
+    opcion.textContent = String(indice + 1).padStart(2, "0") + " · " + nombre;
+    selector.appendChild(opcion);
+  });
+}
+
+function llenarPartidasCaja(partidas){
+  ["caja-partida","caja-mov-partida"].forEach(function(id){
+    const selector = $(id);
+    const anterior = selector.value;
+    selector.innerHTML = "";
+    const opcionVacia = document.createElement("option");
+    opcionVacia.value = "";
+    opcionVacia.textContent = id === "caja-mov-partida" ? "Sin asociación" : "Selecciona una partida";
+    selector.appendChild(opcionVacia);
+    partidas.forEach(function(partida){
+      const opcion = document.createElement("option");
+      opcion.value = partida.codigo;
+      opcion.textContent = partida.codigo + " · " + partida.descripcion + " (" + partida.clasificacion_financiera + ")";
+      selector.appendChild(opcion);
+    });
+    if(Array.from(selector.options).some(function(op){ return op.value === anterior; })){
+      selector.value = anterior;
+    }
+  });
+}
+
+async function cargarFlujoCaja(){
+  if(!estado.presupuestoId) return;
+  try{
+    const soloLectura = estado.rol === ROL_QUE_APRUEBA;
+    ["form-saldo-inicial","form-ingreso-proyectado","form-presupuesto-mensual","form-movimiento-caja"].forEach(function(id){
+      $(id).querySelectorAll("input,select,button").forEach(function(control){ control.disabled = soloLectura; });
+    });
+    const datos = await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/flujo-caja");
+    estado.flujoCaja = datos;
+    $("caja-saldo").value = Number(datos.saldo_inicial || 0);
+    $("caja-ejercicio").textContent = datos.ejercicio;
+    llenarPartidasCaja(datos.partidas || []);
+    if(!$("caja-fecha").value || Number($("caja-fecha").value.slice(0,4)) !== Number(datos.ejercicio)){
+      $("caja-fecha").value = String(datos.ejercicio) + "-01-01";
+    }
+    actualizarImportesProgramados();
+    pintarFlujoCaja(datos);
+    avisar("aviso-caja", "");
+  }catch(error){
+    avisar("aviso-caja", "No se pudo cargar el flujo de caja: " + error.message, "error");
+  }
+}
+
+function actualizarImportesProgramados(){
+  const mesIngreso = $("caja-mes-ingreso").value;
+  $("caja-ingreso-previsto").value = estado.flujoCaja
+    ? (estado.flujoCaja.meses[Number(mesIngreso) - 1].ingresos_proyectados || "")
+    : "";
+  const partida = (estado.flujoCaja && estado.flujoCaja.partidas || []).find(function(item){
+    return item.codigo === $("caja-partida").value;
+  });
+  const mesPartida = $("caja-mes-partida").value;
+  const programacion = partida && partida.programacion || {};
+  $("caja-importe-mensual").value = Object.prototype.hasOwnProperty.call(programacion, mesPartida)
+    ? programacion[mesPartida] : "";
+}
+
+function pintarFlujoCaja(datos){
+  const resumen = datos.resumen || {};
+  const metricas = $("caja-metricas");
+  metricas.innerHTML = "";
+  [
+    ["Saldo inicial", datos.saldo_inicial],
+    ["Presupuesto OPEX anual", resumen.opex_anual],
+    ["Presupuesto CAPEX anual", resumen.capex_anual],
+    ["Presupuesto sin programar", resumen.presupuesto_sin_programar],
+    ["Saldo proyectado al cierre", resumen.saldo_proyectado_final],
+    ["Saldo real actual", resumen.saldo_real_actual]
+  ].forEach(function(item){
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "metric";
+    const valor = document.createElement("strong");
+    valor.textContent = dinero.format(Number(item[1] || 0));
+    const etiqueta = document.createElement("span");
+    etiqueta.textContent = item[0];
+    tarjeta.appendChild(valor);
+    tarjeta.appendChild(etiqueta);
+    metricas.appendChild(tarjeta);
+  });
+
+  const grafico = $("caja-grafico");
+  grafico.innerHTML = "";
+  const meses = Array.isArray(datos.meses) ? datos.meses : [];
+  const maxEgreso = Math.max(1, ...meses.map(function(fila){
+    return Math.max(Number(fila.egresos_presupuestados || 0), Number(fila.egresos_reales || 0));
+  }));
+  meses.forEach(function(fila){
+    const filaMes = document.createElement("div");
+    filaMes.className = "caja-mes";
+    const nombre = document.createElement("strong");
+    nombre.textContent = NOMBRES_MESES[Number(fila.mes) - 1] || String(fila.mes);
+    const barras = document.createElement("div");
+    barras.className = "caja-barras";
+    const planeado = document.createElement("div");
+    planeado.className = "caja-barra";
+    planeado.style.width = Math.max(2, Number(fila.egresos_presupuestados || 0) / maxEgreso * 100) + "%";
+    planeado.title = "Egreso presupuestado: " + dinero.format(Number(fila.egresos_presupuestados || 0));
+    const real = document.createElement("div");
+    real.className = "caja-barra real";
+    real.style.width = Math.max(2, Number(fila.egresos_reales || 0) / maxEgreso * 100) + "%";
+    real.title = "Egreso real: " + dinero.format(Number(fila.egresos_reales || 0));
+    barras.appendChild(planeado);
+    barras.appendChild(real);
+    const saldos = document.createElement("div");
+    saldos.className = "caja-saldos";
+    saldos.textContent = "Proy. " + dinero.format(Number(fila.saldo_proyectado || 0))
+      + " · Real " + dinero.format(Number(fila.saldo_real || 0));
+    filaMes.appendChild(nombre);
+    filaMes.appendChild(barras);
+    filaMes.appendChild(saldos);
+    grafico.appendChild(filaMes);
+  });
+
+  const tabla = document.createElement("table");
+  tabla.className = "caja-tabla";
+  const cabecera = document.createElement("thead");
+  const filaCabecera = document.createElement("tr");
+  ["Mes","Ingreso previsto","OPEX","CAPEX","Ingreso real","Egreso real","Flujo neto proy.","Saldo proy.","Saldo real"].forEach(function(texto){
+    const celda = document.createElement("th");
+    celda.scope = "col";
+    celda.textContent = texto;
+    filaCabecera.appendChild(celda);
+  });
+  cabecera.appendChild(filaCabecera);
+  tabla.appendChild(cabecera);
+  const cuerpo = document.createElement("tbody");
+  meses.forEach(function(fila){
+    const tr = document.createElement("tr");
+    const celdas = [
+      NOMBRES_MESES[Number(fila.mes) - 1],
+      fila.ingresos_proyectados,
+      fila.presupuesto_opex,
+      fila.presupuesto_capex,
+      fila.ingresos_reales,
+      fila.egresos_reales,
+      fila.flujo_neto_proyectado,
+      fila.saldo_proyectado,
+      fila.saldo_real
+    ];
+    celdas.forEach(function(valor, indice){
+      const td = document.createElement("td");
+      td.textContent = indice === 0 ? String(valor || "") : dinero.format(Number(valor || 0));
+      tr.appendChild(td);
+    });
+    cuerpo.appendChild(tr);
+  });
+  tabla.appendChild(cuerpo);
+  const contenedorTabla = $("caja-tabla");
+  contenedorTabla.innerHTML = "";
+  contenedorTabla.appendChild(tabla);
+
+  const listaMovimientos = $("caja-movimientos");
+  listaMovimientos.innerHTML = "";
+  const movimientos = Array.isArray(datos.movimientos) ? datos.movimientos.slice() : [];
+  movimientos.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  if(!movimientos.length){
+    const vacio = document.createElement("li");
+    vacio.className = "empty";
+    vacio.textContent = "Aún no hay movimientos reales.";
+    listaMovimientos.appendChild(vacio);
+  }else{
+    movimientos.forEach(function(movimiento){
+      const item = document.createElement("li");
+      const descripcion = document.createElement("span");
+      descripcion.textContent = movimiento.fecha + " · " + movimiento.tipo.toUpperCase()
+        + " · " + movimiento.descripcion
+        + (movimiento.partida_codigo ? " · " + movimiento.partida_codigo : "");
+      const importe = document.createElement("strong");
+      importe.textContent = dinero.format(Number(movimiento.importe || 0));
+      item.appendChild(descripcion);
+      item.appendChild(importe);
+      listaMovimientos.appendChild(item);
+    });
+  }
+}
+
+$("caja-tipo").addEventListener("change", function(){
+  const esIngreso = $("caja-tipo").value === "ingreso";
+  $("caja-clasificacion").disabled = esIngreso;
+  $("caja-mov-partida").disabled = esIngreso;
+});
+$("caja-mov-partida").addEventListener("change", function(){
+  const partida = (estado.flujoCaja && estado.flujoCaja.partidas || []).find(function(item){
+    return item.codigo === $("caja-mov-partida").value;
+  });
+  if(partida) $("caja-clasificacion").value = partida.clasificacion_financiera;
+});
+$("caja-partida").addEventListener("change", actualizarImportesProgramados);
+$("caja-mes-partida").addEventListener("change", actualizarImportesProgramados);
+$("caja-mes-ingreso").addEventListener("change", actualizarImportesProgramados);
+
+$("form-saldo-inicial").addEventListener("submit", async function(evento){
+  evento.preventDefault();
+  try{
+    await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/saldo-inicial", {
+      method:"PUT", cuerpo:{ importe:Number($("caja-saldo").value) }
+    });
+    avisar("aviso-caja","Saldo inicial actualizado.","ok");
+    await cargarFlujoCaja();
+  }catch(error){ avisar("aviso-caja",error.message,"error"); }
+});
+
+$("form-ingreso-proyectado").addEventListener("submit", async function(evento){
+  evento.preventDefault();
+  try{
+    await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/ingresos-proyectados", {
+      method:"PUT",
+      cuerpo:{ mes:Number($("caja-mes-ingreso").value), importe:Number($("caja-ingreso-previsto").value) }
+    });
+    avisar("aviso-caja","Ingreso mensual programado.","ok");
+    await cargarFlujoCaja();
+  }catch(error){ avisar("aviso-caja",error.message,"error"); }
+});
+
+$("form-presupuesto-mensual").addEventListener("submit", async function(evento){
+  evento.preventDefault();
+  const codigo = $("caja-partida").value;
+  if(!codigo){ avisar("aviso-caja","Selecciona una partida para programar.","error"); return; }
+  try{
+    await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId)
+      + "/partidas/" + encodeURIComponent(codigo) + "/programacion-mensual", {
+      method:"PUT",
+      cuerpo:{ mes:Number($("caja-mes-partida").value), importe:Number($("caja-importe-mensual").value) }
+    });
+    avisar("aviso-caja","Programación mensual guardada.","ok");
+    await cargarFlujoCaja();
+  }catch(error){ avisar("aviso-caja",error.message,"error"); }
+});
+
+$("form-movimiento-caja").addEventListener("submit", async function(evento){
+  evento.preventDefault();
+  try{
+    await api("/api/presupuestos/" + encodeURIComponent(estado.presupuestoId) + "/movimientos-caja", {
+      method:"POST",
+      cuerpo:{
+        fecha:$("caja-fecha").value,
+        tipo:$("caja-tipo").value,
+        descripcion:$("caja-descripcion").value.trim(),
+        importe:Number($("caja-importe-real").value),
+        clasificacion_financiera:$("caja-clasificacion").value,
+        partida_codigo:$("caja-mov-partida").value || null
+      }
+    });
+    $("caja-descripcion").value = "";
+    $("caja-importe-real").value = "";
+    avisar("aviso-caja","Movimiento real registrado.","ok");
+    await cargarFlujoCaja();
+  }catch(error){ avisar("aviso-caja",error.message,"error"); }
+});
+
 /* ---------- arranque ---------- */
+llenarMeses("caja-mes-ingreso");
+llenarMeses("caja-mes-partida");
+const hoy = new Date();
+$("caja-fecha").value = String(hoy.getFullYear()) + "-"
+  + String(hoy.getMonth() + 1).padStart(2, "0") + "-"
+  + String(hoy.getDate()).padStart(2, "0");
+$("caja-tipo").dispatchEvent(new Event("change"));
 pintarUsuariosDemo();
 comprobarSalud();
 setInterval(comprobarSalud, 60000);

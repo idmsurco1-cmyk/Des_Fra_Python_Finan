@@ -9,7 +9,7 @@ El objetivo de la interfaz es permitir que un usuario:
 
 1. Ingrese al aplicativo.
 2. Cree un nuevo presupuesto.
-3. Seleccione una estructura madre estandar CONAC.
+3. Seleccione un capítulo del catálogo presupuestario peruano vigente.
 4. Cree partidas especificas dentro del capitulo seleccionado.
 5. Consulte la matriz madre con los acumulados de partida especifica, partida generica, concepto y capitulo.
 
@@ -77,23 +77,27 @@ Partida especifica (XXXX)
   -> Capitulo (X000)
 ```
 
-La interfaz del MVP trabaja actualmente en la parte de estructura presupuestaria y matriz. No debe presentar como implementados estados financieros, flujo de efectivo o desviaciones si el backend aun no los expone.
+La interfaz expone la estructura presupuestaria, la matriz y un flujo de caja anual básico. Este flujo compara ingresos previstos y egresos OPEX/CAPEX programados con movimientos reales; no equivale a estados financieros completos, conciliación bancaria ni análisis de desviaciones.
 
-## 4. Modelo CONAC para la interfaz
+## 4. Catálogo presupuestario y clasificación financiera
 
-Los nueve capitulos disponibles son:
+El aplicativo conserva el catálogo peruano vigente, con ocho capítulos:
 
 | Codigo | Descripcion |
 | --- | --- |
-| 1000 | Servicios personales |
-| 2000 | Materiales y suministros |
-| 3000 | Servicios generales |
-| 4000 | Transferencias, asignaciones, subsidios y otras ayudas |
-| 5000 | Bienes muebles, inmuebles e intangibles |
-| 6000 | Inversion publica |
-| 7000 | Inversiones financieras y otras provisiones |
-| 8000 | Participaciones y aportaciones |
-| 9000 | Deuda publica |
+| 1000 | Remuneraciones y obligaciones sociales |
+| 2000 | Pensiones y otras prestaciones sociales |
+| 3000 | Bienes y servicios |
+| 4000 | Donaciones y transferencias |
+| 5000 | Otros gastos |
+| 6000 | Adquisición de activos no financieros |
+| 7000 | Adquisición de activos financieros |
+| 8000 | Servicio de la deuda pública |
+
+OPEX y CAPEX son una clasificación adicional de cada partida, no reemplazan el
+código ni la jerarquía del catálogo. Los valores permitidos son `OPEX` (gasto
+operativo) y `CAPEX` (inversión de capital); las partidas existentes sin
+clasificación explícita se consideran OPEX.
 
 Una partida especifica debe:
 
@@ -106,13 +110,13 @@ Una partida especifica debe:
 Ejemplo:
 
 ```text
-Partida especifica: 2111
-Partida generica:  2110
-Concepto:          2100
-Capitulo:          2000
+Partida especifica: 3111
+Partida generica:  3110
+Concepto:          3100
+Capitulo:          3000
 ```
 
-Si se registran `2111` por `$1,000` y `2121` por `$500`, ambos se acumulan en `2100` por `$1,500` y en `2000` por `$1,500`.
+Si se registran `3111` por `S/ 1,000` y `3121` por `S/ 500`, ambos se acumulan en `3100` por `S/ 1,500` y en `3000` por `S/ 1,500`.
 
 ### Subpartidas anidadas
 
@@ -136,13 +140,13 @@ Un nodo como `1001 · Personal` puede contener pagos de naturaleza distinta que
 forman parte del costo total de personal, aunque no sean sueldo directo:
 
 ```text
-1001          Personal                         $12,300
-├── 1001.01   Sueldo       [Sueldo]            $10,000
-├── 1001.02   Pensión      [Pension]            $1,500
-└── 1001.03   Seguro       [Seguro]               $800
+1001          Personal                         S/ 12,300
+├── 1001.01   Sueldo       [Sueldo]            S/ 10,000
+├── 1001.02   Pensión      [Pension]            S/  1,500
+└── 1001.03   Seguro       [Seguro]            S/    800
 ```
 
-El total del nodo padre y del capítulo debe ser `$12,300`, mientras las tres
+El total del nodo padre y del capítulo debe ser `S/ 12,300`, mientras las tres
 partidas deben permanecer visibles como desglose. Al crear una partida se puede
 enviar el campo opcional `categoria` con valores como `Sueldo`, `Pension`,
 `Seguro` o `Prestacion`. La interfaz debe mostrar la categoría en la fila, pero
@@ -157,7 +161,7 @@ El backend reconoce estos valores:
 - `Direccion General`
 - `Ingenieria Industrial`
 
-Para el MVP, solo `Lider de Area` y `Director Financiero` pueden crear partidas. La restriccion se aplica en backend y no debe implementarse solamente ocultando botones en HTML.
+Para el MVP, solo `Lider de Area` y `Director Financiero` pueden crear presupuestos, partidas y movimientos de caja. La restriccion se aplica en backend y no debe implementarse solamente ocultando botones en HTML. Dirección General puede consultar y aprobar presupuestos, pero no editarlos. Los presupuestos de otros usuarios no deben aparecer ni ser accesibles, excepto para Dirección General en modo consulta/aprobación.
 
 La interfaz puede mostrar controles deshabilitados para roles sin permiso, pero debe interpretar cualquier respuesta de error del backend y mostrarla al usuario.
 
@@ -188,13 +192,13 @@ Respuesta `200`:
 ```json
 {
   "capitulos": [
-    {"codigo":"1000", "descripcion":"Servicios personales"},
-    {"codigo":"2000", "descripcion":"Materiales y suministros"}
+    {"codigo":"1000", "descripcion":"Remuneraciones y obligaciones sociales"},
+    {"codigo":"2000", "descripcion":"Pensiones y otras prestaciones sociales"}
   ]
 }
 ```
 
-La lista real contiene los nueve capitulos.
+La API devuelve los ocho capítulos del catálogo peruano vigente.
 
 ### Inicio de sesión
 
@@ -260,7 +264,7 @@ Content-Type: application/json
 Cuerpo:
 
 ```json
-{"codigo":"2000"}
+{"codigo":"3000"}
 ```
 
 Respuesta `200`:
@@ -268,7 +272,7 @@ Respuesta `200`:
 ```json
 {
   "presupuesto_id": "uuid",
-  "estructura_madre": "2000"
+  "estructura_madre": "3000"
 }
 ```
 
@@ -283,9 +287,10 @@ Cuerpo:
 
 ```json
 {
-  "codigo": "2111",
-  "descripcion": "Papeleria",
-  "importe": 1250
+  "codigo": "3111",
+  "descripcion": "Servicio de mantenimiento",
+  "importe": 1250,
+  "clasificacion_financiera": "OPEX"
 }
 ```
 
@@ -293,10 +298,11 @@ Respuesta `201`:
 
 ```json
 {
-  "codigo": "2111",
-  "descripcion": "Papeleria",
+  "codigo": "3111",
+  "descripcion": "Servicio de mantenimiento",
   "importe": 1250.0,
-  "responsable": "Lider de Area"
+  "responsable": "Lider de Area",
+  "clasificacion_financiera": "OPEX"
 }
 ```
 
@@ -313,31 +319,33 @@ Respuesta `200`:
   "id": "uuid",
   "nombre": "Presupuesto 2026",
   "ejercicio": 2026,
-  "estructura_madre": "2000",
+  "estructura_madre": "3000",
   "filas": [
     {
-      "codigo": "2000",
+      "codigo": "3000",
       "nivel": "Capitulo",
       "descripcion": "Consolidado",
-      "importe": 1250.0
+      "importe": 1250.0,
+      "clasificacion_financiera": null
     },
     {
-      "codigo": "2100",
+      "codigo": "3100",
       "nivel": "Concepto",
       "descripcion": "Consolidado",
       "importe": 1250.0
     },
     {
-      "codigo": "2110",
+      "codigo": "3110",
       "nivel": "Partida generica",
       "descripcion": "Consolidado",
       "importe": 1250.0
     },
     {
-      "codigo": "2111",
+      "codigo": "3111",
       "nivel": "Partida especifica",
-      "descripcion": "Papeleria",
-      "importe": 1250.0
+      "descripcion": "Servicio de mantenimiento",
+      "importe": 1250.0,
+      "clasificacion_financiera": "OPEX"
     }
   ]
 }
@@ -361,6 +369,31 @@ Una ruta inexistente responde con estado `404`:
 
 Toda solicitud del frontend debe revisar `response.ok`, leer el JSON y mostrar un estado entendible. No debe asumir que toda respuesta es exitosa.
 
+### Flujo de caja anual
+
+El ejercicio se modela de enero a diciembre. Se configura un saldo inicial,
+ingresos previstos por mes, importes mensuales de partidas y movimientos reales
+con fecha, tipo ingreso/egreso y clasificación OPEX/CAPEX. El backend calcula
+los saldos proyectados y reales acumulados.
+
+```http
+GET  /api/presupuestos/{id}/flujo-caja
+PUT  /api/presupuestos/{id}/saldo-inicial
+PUT  /api/presupuestos/{id}/ingresos-proyectados
+PUT  /api/presupuestos/{id}/partidas/{codigo}/programacion-mensual
+POST /api/presupuestos/{id}/movimientos-caja
+```
+
+Los cuerpos de los `PUT` mensuales usan `{"mes":1,"importe":250.00}`. El
+movimiento real usa `fecha` (`AAAA-MM-DD`), `tipo` (`ingreso` o `egreso`),
+`descripcion`, `importe` y, para egresos, `clasificacion_financiera` (`OPEX` o
+`CAPEX`). `partida_codigo` es opcional para egresos. Un movimiento debe
+pertenecer al ejercicio del presupuesto y la suma de programación mensual de
+una partida no puede superar su presupuesto anual.
+
+Las partidas y movimientos se conservan en memoria; el tablero no representa
+datos bancarios importados ni conciliados.
+
 ## 7. Flujo de pantalla obligatorio
 
 ### Estado inicial
@@ -381,7 +414,7 @@ Toda solicitud del frontend debe revisar `response.ok`, leer el JSON y mostrar u
 ### Despues de seleccionar estructura madre
 
 - Mostrar el codigo y descripcion del capitulo.
-- Mostrar el contexto en la captura, por ejemplo `1000 · Servicios personales`.
+- Mostrar el contexto en la captura, por ejemplo `1000 · Remuneraciones y obligaciones sociales`.
 - Proponer automaticamente la primera partida especifica del capitulo, por ejemplo `1001`.
 - Habilitar la captura de partidas si el rol tiene permiso.
 - Consultar y renderizar la matriz.
@@ -394,6 +427,16 @@ Toda solicitud del frontend debe revisar `response.ok`, leer el JSON y mostrar u
 - Actualizar la matriz consultando nuevamente el backend.
 - Mostrar confirmacion de alta.
 - Si hay error, conservar los datos escritos para facilitar la correccion.
+
+### Tablero de flujo de caja
+
+- Permitir capturar el saldo inicial del ejercicio.
+- Permitir programar ingresos previstos por mes.
+- Permitir distribuir el presupuesto anual OPEX/CAPEX por partida y mes.
+- Permitir registrar movimientos reales y asociar opcionalmente egresos con una partida.
+- Mostrar comparativo mensual de egresos presupuestados y reales, flujos netos y saldos acumulados proyectados/reales.
+- Mostrar el importe anual aún no distribuido por mes.
+- No presentar el flujo como conciliado con banco ni como un estado financiero completo.
 
 ## 8. Reglas para reemplazar `index.html` sin bugs
 
@@ -428,15 +471,18 @@ El reemplazo frontend se considera compatible cuando:
 
 - `python -m app.backend` inicia sin errores.
 - `GET http://127.0.0.1:8000/` entrega HTML con estado `200`.
-- La pantalla carga los nueve capitulos desde la API.
+- La pantalla carga los ocho capítulos peruanos vigentes desde la API.
 - Se puede crear un presupuesto con rol `Lider de Area`.
-- Se puede seleccionar `2000` como estructura madre.
-- Se puede guardar `2111` con importe `1250`.
-- La matriz muestra `2111`, `2110`, `2100` y `2000`.
-- El total de `2000` aparece como `$1,250.00` o equivalente local.
-- Una partida `3111` bajo madre `2000` muestra el error del backend y no aparece en la matriz.
+- Se puede seleccionar `3000` como estructura madre.
+- Se puede guardar `3111` con importe `1250`.
+- La matriz muestra `3111`, `3110`, `3100` y `3000`.
+- El total de `3000` aparece como `S/ 1,250.00` o equivalente local.
+- Una partida `2111` bajo madre `3000` muestra el error del backend y no aparece en la matriz.
 - Un importe negativo no se presenta como guardado.
 - Un rol sin permiso no puede registrar partidas aunque intente llamar la API.
+- OPEX/CAPEX se conserva al consultar la matriz y programar partidas por mes.
+- El saldo proyectado y el real se calculan con movimientos mensuales distintos.
+- Un usuario no puede consultar ni modificar presupuestos de otro propietario; Dirección General puede consultarlos y aprobarlos.
 - La suite existente sigue pasando:
 
 ```bash
@@ -446,21 +492,23 @@ python -m unittest discover -s tests -p "test_*.py"
 ## 10. Limitaciones conocidas del MVP
 
 - El almacenamiento es temporal y en memoria.
-- No hay autenticacion real; el rol se recibe en la solicitud de creacion.
+- La autenticación usa usuarios demo y sesiones en memoria; no es autenticación de producción.
 - No hay edicion ni eliminacion de partidas.
-- No hay persistencia ni multiusuario.
+- No hay persistencia. Las rutas web aíslan presupuestos por propietario y Dirección General puede consultarlos/aprobarlos, pero no existe gestión productiva de usuarios.
 - La matriz actualmente representa importes de partidas; aun no integra todo el pipeline financiero.
 - El servidor actual no sirve archivos estaticos adicionales.
-- La interfaz no debe prometer estados financieros, flujo de caja o analisis de desviaciones hasta que existan endpoints para esos procesos.
+- El flujo de caja es una proyección básica; no hay integración/conciliación bancaria, estados financieros ni análisis de desviaciones.
 
 ## 11. Comprobacion manual recomendada
 
 1. Iniciar el backend.
 2. Abrir `http://127.0.0.1:8000/`.
 3. Crear `Presupuesto 2026`, ejercicio `2026`, rol `Lider de Area`.
-4. Seleccionar `2000 - Materiales y suministros`.
-5. Agregar `2111 - Papeleria - 1250`.
-6. Agregar `2121 - Material de limpieza - 500`.
-7. Confirmar que `2100` suma `$1,500` y `2000` suma `$1,500`.
-8. Intentar agregar `3111` y confirmar que el backend rechaza la partida.
+4. Seleccionar `3000 - Bienes y servicios`.
+5. Agregar `3111 - Servicio de mantenimiento - 1250`.
+6. Agregar `3121 - Material de limpieza - 500`.
+7. Confirmar que `3100` suma `S/ 1,500` y `3000` suma `S/ 1,500`.
+8. Intentar agregar `2111` y confirmar que el backend rechaza la partida.
 9. Detener y reiniciar el backend para verificar que la interfaz tolera una nueva sesion sin datos previos.
+10. Configurar saldo inicial, ingreso previsto y egresos OPEX/CAPEX para dos meses; verificar saldos proyectados.
+11. Registrar un ingreso y un egreso real y confirmar que el saldo real evoluciona independientemente del proyectado.

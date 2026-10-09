@@ -14,6 +14,9 @@ Este proyecto ya ha avanzado de un MVP básico a una base funcional para presupu
 - consolidar importes por capítulo, nivel y categoría
 - visualizar un reporte resumido por categoría y, en una segunda capa, por puesto/cargo
 - mantener una vista en matriz con acumulados jerárquicos
+- clasificar partidas como OPEX o CAPEX sin cambiar los códigos ni la jerarquía
+- programar ingresos y egresos por mes y registrar movimientos reales de caja
+- consultar un tablero anual con saldos proyectados y reales acumulados
 
 La aplicación queda organizada en:
 
@@ -47,7 +50,23 @@ Se incorporó la posibilidad de actualizar una partida ya registrada, evitando q
 La pestaña de reporte permite observar un consolidado por categoría y por vista. Aunque todavía es un enfoque práctico, ya se tiene la base para proyectar la vista financiera y la vista por puesto/cargo, siguiendo la lógica documentada en los archivos de contexto.
 
 ### 5. Pruebas automáticas
-El proyecto cuenta con una suite de pruebas que cubre la estructura jerárquica, los acumulados, la actualización de partidas y el reporte base.
+La suite cubre la estructura jerárquica, los acumulados, la actualización de partidas, la programación del flujo de caja, los movimientos reales y controles HTTP de acceso por propietario.
+
+### 6. Clasificación financiera y flujo de caja
+Cada partida conserva su código y jerarquía y se clasifica como `OPEX`
+(gasto operativo) o `CAPEX` (inversión de capital). El tablero anual permite
+configurar el saldo inicial, distribuir importes por mes, proyectar ingresos y
+registrar ingresos y egresos reales con fecha. El saldo proyectado acumula los
+ingresos previstos menos los egresos programados; el saldo real acumula los
+movimientos registrados. La programación mensual de una partida no puede
+superar su importe anual.
+
+La API expone `GET /api/presupuestos/{id}/flujo-caja`,
+`PUT /api/presupuestos/{id}/saldo-inicial`,
+`PUT /api/presupuestos/{id}/ingresos-proyectados`,
+`PUT /api/presupuestos/{id}/partidas/{codigo}/programacion-mensual` y
+`POST /api/presupuestos/{id}/movimientos-caja`. Las rutas HTTP aíslan cada
+presupuesto por propietario; Dirección General puede consultarlos y aprobarlos.
 
 ## Limitaciones actuales
 
@@ -56,6 +75,7 @@ Aun así, el sistema no está listo para producción financiera completa. Hoy ti
 1. Persistencia en memoria
    - Los datos se pierden al reiniciar el backend.
    - Falta almacenamiento real con base de datos o archivo estructurado.
+   - La clasificación, la programación mensual, los saldos y movimientos de caja también se pierden al reiniciar.
 
 2. Modelo financiero todavía parcialmente genérico
    - La lógica de asignación de puestos, salarios, beneficios y análisis del flujo de caja está bien estructurada como base, pero no está modelada con toda la profundidad del negocio real.
@@ -68,11 +88,11 @@ Aun así, el sistema no está listo para producción financiera completa. Hoy ti
      - centros de costo
      - responsables por línea
      - diferencia entre gasto directo e indirecto
-     - desglose por periodo
-     - flujo de caja y variación real vs presupuestado
+     - integración bancaria y conciliación de caja
+     - análisis detallado de variaciones reales vs presupuestadas
 
 5. Persistencia y seguridad de negocio
-   - La API no tiene autenticación real en base de datos.
+   - La autenticación actual se basa en usuarios demo en memoria; no es adecuada para producción.
    - No hay control de auditoría, trazabilidad ni historial de cambios.
 
 ## Conclusión

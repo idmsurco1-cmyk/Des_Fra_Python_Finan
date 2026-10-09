@@ -20,6 +20,7 @@ else:
 class PresupuestoApi:
     """Casos de uso del backend con almacenamiento en memoria."""
 
+    ROLES_QUE_CAPTURAN = {"Lider de Area", "Director Financiero"}
     USUARIOS = {
         "lider.operativo": ("lider2026", "Lider de Area"),
         "director.financiero": ("director2026", "Director Financiero"),
@@ -29,6 +30,7 @@ class PresupuestoApi:
 
     def __init__(self) -> None:
         self.presupuestos: dict[str, EntornoPresupuestario] = {}
+        self.propietarios: dict[str, str] = {}
         self.sesiones: dict[str, dict[str, str]] = {}
 
     def login(self, usuario: str, contrasena: str) -> dict[str, str]:
@@ -39,14 +41,23 @@ class PresupuestoApi:
         self.sesiones[token] = {"usuario": usuario, "rol": registro[1]}
         return {"token": token, "usuario": usuario, "rol": registro[1]}
 
-    def crear_presupuesto(self, datos: dict[str, Any], rol: str | None = None) -> dict[str, Any]:
+    def crear_presupuesto(
+        self,
+        datos: dict[str, Any],
+        rol: str | None = None,
+        propietario: str | None = None,
+    ) -> dict[str, Any]:
         nombre = str(datos.get("nombre", "")).strip()
         if not nombre:
             raise ValueError("El nombre del presupuesto es obligatorio.")
         ejercicio = int(datos.get("ejercicio", 0))
+        if ejercicio < 1:
+            raise ValueError("El ejercicio debe ser un año válido.")
         rol = rol or str(datos.get("rol", "Lider de Area"))
         presupuesto_id = str(uuid4())
         self.presupuestos[presupuesto_id] = EntornoPresupuestario.iniciar_estandar_peru(nombre, ejercicio, rol)
+        if propietario:
+            self.propietarios[presupuesto_id] = propietario
         return {"id": presupuesto_id, "nombre": nombre, "ejercicio": ejercicio, "rol": rol}
 
     def capitulos(self) -> list[dict[str, Any]]:
@@ -68,6 +79,7 @@ class PresupuestoApi:
             importe=float(datos.get("importe", 0)),
             parent_codigo=str(datos.get("parent_codigo", "")).strip() or None,
             categoria=str(datos.get("categoria", "")).strip() or None,
+            clasificacion_financiera=str(datos.get("clasificacion_financiera", "OPEX")),
         )
         return {
             "codigo": partida.codigo,
@@ -76,6 +88,7 @@ class PresupuestoApi:
             "responsable": partida.responsable,
             "parent_codigo": partida.parent_codigo,
             "categoria": partida.categoria,
+            "clasificacion_financiera": partida.clasificacion_financiera,
         }
 
     def actualizar_partida(self, presupuesto_id: str, codigo: str, datos: dict[str, Any]) -> dict[str, Any]:
@@ -86,6 +99,10 @@ class PresupuestoApi:
             importe=None if "importe" not in datos else float(datos.get("importe", 0)),
             parent_codigo=(None if "parent_codigo" not in datos else str(datos.get("parent_codigo", "")).strip() or None),
             categoria=(None if "categoria" not in datos else str(datos.get("categoria", "")).strip() or None),
+            clasificacion_financiera=(
+                None if "clasificacion_financiera" not in datos
+                else str(datos.get("clasificacion_financiera", ""))
+            ),
         )
         return {
             "codigo": partida.codigo,
@@ -94,6 +111,48 @@ class PresupuestoApi:
             "responsable": partida.responsable,
             "parent_codigo": partida.parent_codigo,
             "categoria": partida.categoria,
+            "clasificacion_financiera": partida.clasificacion_financiera,
+        }
+
+    def flujo_caja(self, presupuesto_id: str) -> dict[str, Any]:
+        return self._obtener(presupuesto_id).flujo_caja()
+
+    def establecer_saldo_inicial(self, presupuesto_id: str, importe: float) -> dict[str, float]:
+        saldo = self._obtener(presupuesto_id).establecer_saldo_inicial(importe)
+        return {"saldo_inicial": saldo}
+
+    def programar_partida_mensual(
+        self,
+        presupuesto_id: str,
+        codigo: str,
+        mes: int,
+        importe: float,
+    ) -> dict[str, Any]:
+        return self._obtener(presupuesto_id).programar_partida_mensual(codigo, mes, importe)
+
+    def programar_ingreso_mensual(self, presupuesto_id: str, mes: int, importe: float) -> dict[str, Any]:
+        return self._obtener(presupuesto_id).programar_ingreso_mensual(mes, importe)
+
+    def registrar_movimiento_caja(self, presupuesto_id: str, datos: dict[str, Any]) -> dict[str, Any]:
+        movimiento = self._obtener(presupuesto_id).registrar_movimiento_caja(
+            fecha=str(datos.get("fecha", "")),
+            tipo=str(datos.get("tipo", "")),
+            descripcion=str(datos.get("descripcion", "")),
+            importe=float(datos.get("importe", 0)),
+            clasificacion_financiera=(
+                None if datos.get("clasificacion_financiera") is None
+                else str(datos.get("clasificacion_financiera"))
+            ),
+            partida_codigo=str(datos.get("partida_codigo", "")).strip() or None,
+        )
+        return {
+            "id": movimiento.id,
+            "fecha": movimiento.fecha,
+            "tipo": movimiento.tipo,
+            "descripcion": movimiento.descripcion,
+            "importe": movimiento.importe,
+            "clasificacion_financiera": movimiento.clasificacion_financiera,
+            "partida_codigo": movimiento.partida_codigo,
         }
 
     def reporte(self, presupuesto_id: str, vista: str = "financiera") -> dict[str, Any]:
@@ -121,7 +180,11 @@ class PresupuestoApi:
             "filas": entorno.matriz_madre(),
         }
 
-    def listar_presupuestos(self) -> list[dict[str, Any]]:
+    def listar_presupuestos(
+        self,
+        propietario: str | None = None,
+        incluir_todos: bool = False,
+    ) -> list[dict[str, Any]]:
         return [
             {
                 "id": presupuesto_id,
@@ -132,7 +195,24 @@ class PresupuestoApi:
                 "propietario_rol": entorno.rol,
             }
             for presupuesto_id, entorno in self.presupuestos.items()
+            if incluir_todos or propietario is None or self.propietarios.get(presupuesto_id) == propietario
         ]
+
+    def validar_propietario(
+        self,
+        presupuesto_id: str,
+        propietario: str,
+        permitir_direccion_general: bool = False,
+    ) -> None:
+        self._obtener(presupuesto_id)
+        rol = next(
+            (sesion["rol"] for sesion in self.sesiones.values() if sesion["usuario"] == propietario),
+            None,
+        )
+        if self.propietarios.get(presupuesto_id) != propietario and not (
+            permitir_direccion_general and rol == "Direccion General"
+        ):
+            raise PermissionError("No tienes acceso a este presupuesto.")
 
     def aprobar(self, presupuesto_id: str, usuario: str, rol: str) -> dict[str, Any]:
         entorno = self._obtener(presupuesto_id)
@@ -169,6 +249,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                             "POST /presupuestos/{id}/estructura-madre",
                             "POST /presupuestos/{id}/partidas",
                             "GET /presupuestos/{id}/matriz",
+                            "GET /presupuestos/{id}/flujo-caja",
+                            "PUT /presupuestos/{id}/saldo-inicial",
+                            "PUT /presupuestos/{id}/ingresos-proyectados",
+                            "PUT /presupuestos/{id}/partidas/{codigo}/programacion-mensual",
+                            "POST /presupuestos/{id}/movimientos-caja",
                         ],
                     },
                 )
@@ -177,22 +262,30 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif ruta == "/catalogo/capitulos":
                 self._responder(200, {"capitulos": self.api.capitulos()})
             elif ruta == "/presupuestos":
-                self._usuario_actual()
-                self._responder(200, {"presupuestos": self.api.listar_presupuestos()})
+                usuario = self._usuario_actual()
+                incluir_todos = usuario["rol"] == "Direccion General"
+                self._responder(
+                    200,
+                    {"presupuestos": self.api.listar_presupuestos(usuario["usuario"], incluir_todos)},
+                )
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/matriz"):
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self._usuario_presupuesto(presupuesto_id)
                 self._responder(200, self.api.matriz(presupuesto_id))
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/reporte"):
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self._usuario_presupuesto(presupuesto_id)
                 params = parse_qs(urlparse(self.path).query)
                 vista = params.get("vista", ["financiera"])[0]
                 self._responder(200, self.api.reporte(presupuesto_id, vista))
+            elif ruta.startswith("/presupuestos/") and ruta.endswith("/flujo-caja"):
+                presupuesto_id = ruta.split("/")[2]
+                self._usuario_presupuesto(presupuesto_id)
+                self._responder(200, self.api.flujo_caja(presupuesto_id))
             else:
                 self._responder(404, {"error": "Ruta no encontrada."})
         except (KeyError, ValueError, PermissionError) as error:
-            self._responder(400, {"error": str(error)})
+            self._responder(self._estado_error(error), {"error": str(error)})
 
     def do_POST(self) -> None:
         ruta = self._ruta_api()
@@ -202,43 +295,86 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self._responder(200, self.api.login(str(datos.get("usuario", "")), str(datos.get("contrasena", ""))))
             elif ruta == "/presupuestos":
                 usuario = self._usuario_actual()
-                self._responder(201, self.api.crear_presupuesto(datos, usuario["rol"]))
+                if usuario["rol"] not in self.api.ROLES_QUE_CAPTURAN:
+                    raise PermissionError("El rol actual no puede crear presupuestos.")
+                self._responder(
+                    201,
+                    self.api.crear_presupuesto(datos, usuario["rol"], usuario["usuario"]),
+                )
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/estructura-madre"):
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self._usuario_propietario(presupuesto_id)
                 self._responder(200, self.api.seleccionar_madre(presupuesto_id, str(datos["codigo"])))
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/partidas"):
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self._usuario_propietario(presupuesto_id)
                 self._responder(201, self.api.agregar_partida(presupuesto_id, datos))
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/aprobar"):
                 usuario = self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self.api.validar_propietario(
+                    presupuesto_id,
+                    usuario["usuario"],
+                    permitir_direccion_general=True,
+                )
                 self._responder(200, self.api.aprobar(presupuesto_id, usuario["usuario"], usuario["rol"]))
             elif ruta.startswith("/presupuestos/") and ruta.endswith("/reporte"):
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
+                self._usuario_presupuesto(presupuesto_id)
                 params = parse_qs(urlparse(self.path).query)
                 vista = params.get("vista", ["financiera"])[0]
                 self._responder(200, self.api.reporte(presupuesto_id, vista))
+            elif ruta.startswith("/presupuestos/") and ruta.endswith("/movimientos-caja"):
+                presupuesto_id = ruta.split("/")[2]
+                self._usuario_propietario(presupuesto_id)
+                self._responder(201, self.api.registrar_movimiento_caja(presupuesto_id, datos))
             else:
                 self._responder(404, {"error": "Ruta no encontrada."})
         except (KeyError, ValueError, PermissionError, TypeError) as error:
-            self._responder(401 if isinstance(error, PermissionError) and "contraseña" not in str(error) and "Solo" not in str(error) else 400, {"error": str(error)})
+            self._responder(self._estado_error(error), {"error": str(error)})
 
     def do_PUT(self) -> None:
         ruta = self._ruta_api()
         try:
             datos = self._leer_json()
             if ruta.startswith("/presupuestos/") and "/partidas/" in ruta:
-                self._usuario_actual()
                 presupuesto_id = ruta.split("/")[2]
-                codigo = unquote(ruta.split("/partidas/")[1])
+                self._usuario_propietario(presupuesto_id)
+                codigo_y_accion = ruta.split("/partidas/", 1)[1]
+                if codigo_y_accion.endswith("/programacion-mensual"):
+                    codigo = unquote(codigo_y_accion.removesuffix("/programacion-mensual"))
+                    resultado = self.api.programar_partida_mensual(
+                        presupuesto_id,
+                        codigo,
+                        int(datos.get("mes", 0)),
+                        float(datos.get("importe", 0)),
+                    )
+                    self._responder(200, resultado)
+                    return
+                codigo = unquote(codigo_y_accion)
                 self._responder(200, self.api.actualizar_partida(presupuesto_id, codigo, datos))
+            elif ruta.startswith("/presupuestos/") and ruta.endswith("/saldo-inicial"):
+                presupuesto_id = ruta.split("/")[2]
+                self._usuario_propietario(presupuesto_id)
+                self._responder(
+                    200,
+                    self.api.establecer_saldo_inicial(presupuesto_id, float(datos.get("importe", 0))),
+                )
+            elif ruta.startswith("/presupuestos/") and ruta.endswith("/ingresos-proyectados"):
+                presupuesto_id = ruta.split("/")[2]
+                self._usuario_propietario(presupuesto_id)
+                self._responder(
+                    200,
+                    self.api.programar_ingreso_mensual(
+                        presupuesto_id,
+                        int(datos.get("mes", 0)),
+                        float(datos.get("importe", 0)),
+                    ),
+                )
             else:
                 self._responder(404, {"error": "Ruta no encontrada."})
         except (KeyError, ValueError, PermissionError, TypeError) as error:
-            self._responder(401 if isinstance(error, PermissionError) and "contraseña" not in str(error) and "Solo" not in str(error) else 400, {"error": str(error)})
+            self._responder(self._estado_error(error), {"error": str(error)})
 
     def _leer_json(self) -> dict[str, Any]:
         longitud = int(self.headers.get("Content-Length", "0"))
@@ -261,6 +397,26 @@ class RequestHandler(BaseHTTPRequestHandler):
         if token not in self.api.sesiones:
             raise PermissionError("La sesión no es válida o expiró.")
         return self.api.sesiones[token]
+
+    def _usuario_presupuesto(self, presupuesto_id: str) -> dict[str, str]:
+        usuario = self._usuario_actual()
+        self.api.validar_propietario(
+            presupuesto_id,
+            usuario["usuario"],
+            permitir_direccion_general=True,
+        )
+        return usuario
+
+    def _usuario_propietario(self, presupuesto_id: str) -> dict[str, str]:
+        usuario = self._usuario_actual()
+        self.api.validar_propietario(presupuesto_id, usuario["usuario"])
+        return usuario
+
+    @staticmethod
+    def _estado_error(error: Exception) -> int:
+        if isinstance(error, PermissionError):
+            return 403 if "acceso" in str(error).lower() or "solo" in str(error).lower() or "rol" in str(error).lower() else 401
+        return 400
 
     def _responder_html(self) -> None:
         archivo = Path(__file__).parent / "static" / "index.html"
