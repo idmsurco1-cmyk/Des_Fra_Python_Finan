@@ -66,6 +66,38 @@ class BackendTest(unittest.TestCase):
             "CAPEX",
         )
 
+    def test_categoria_nula_no_se_muestra_como_texto_none_en_subpartida(self) -> None:
+        api = PresupuestoApi()
+        presupuesto_id = api.crear_presupuesto(
+            {"nombre": "Subpartida", "ejercicio": 2026}, "Lider de Area"
+        )["id"]
+        api.seleccionar_madre(presupuesto_id, "1000")
+        api.agregar_partida(
+            presupuesto_id,
+            {"codigo": "1001", "descripcion": "Administración", "importe": 100},
+        )
+
+        creada = api.agregar_partida(
+            presupuesto_id,
+            {
+                "codigo": "1001.10",
+                "descripcion": "Servicios administrativos",
+                "importe": 50,
+                "parent_codigo": "1001",
+                "categoria": None,
+            },
+        )
+        actualizada = api.actualizar_partida(
+            presupuesto_id, "1001.10", {"categoria": None}
+        )
+        fila = next(
+            f for f in api.matriz(presupuesto_id)["filas"] if f["codigo"] == "1001.10"
+        )
+
+        self.assertIsNone(creada["categoria"])
+        self.assertIsNone(actualizada["categoria"])
+        self.assertIsNone(fila["categoria"])
+
     def test_direccion_general_puede_aprobar_presupuesto(self) -> None:
         api = PresupuestoApi()
         presupuesto_id = api.crear_presupuesto(

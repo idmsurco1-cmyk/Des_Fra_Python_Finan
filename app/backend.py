@@ -77,8 +77,8 @@ class PresupuestoApi:
             codigo=str(datos.get("codigo", "")).strip(),
             descripcion=str(datos.get("descripcion", "")).strip(),
             importe=float(datos.get("importe", 0)),
-            parent_codigo=str(datos.get("parent_codigo", "")).strip() or None,
-            categoria=str(datos.get("categoria", "")).strip() or None,
+            parent_codigo=self._texto_opcional(datos, "parent_codigo"),
+            categoria=self._texto_opcional(datos, "categoria"),
             clasificacion_financiera=str(datos.get("clasificacion_financiera", "OPEX")),
         )
         return {
@@ -97,8 +97,8 @@ class PresupuestoApi:
             codigo=codigo,
             descripcion=(None if "descripcion" not in datos else str(datos.get("descripcion", "")).strip() or None),
             importe=None if "importe" not in datos else float(datos.get("importe", 0)),
-            parent_codigo=(None if "parent_codigo" not in datos else str(datos.get("parent_codigo", "")).strip() or None),
-            categoria=(None if "categoria" not in datos else str(datos.get("categoria", "")).strip() or None),
+            parent_codigo=self._texto_opcional(datos, "parent_codigo"),
+            categoria=self._texto_opcional(datos, "categoria"),
             clasificacion_financiera=(
                 None if "clasificacion_financiera" not in datos
                 else str(datos.get("clasificacion_financiera", ""))
@@ -113,6 +113,11 @@ class PresupuestoApi:
             "categoria": partida.categoria,
             "clasificacion_financiera": partida.clasificacion_financiera,
         }
+
+    @staticmethod
+    def _texto_opcional(datos: dict[str, Any], campo: str) -> str | None:
+        valor = datos.get(campo)
+        return None if valor is None else str(valor).strip() or None
 
     def flujo_caja(self, presupuesto_id: str) -> dict[str, Any]:
         return self._obtener(presupuesto_id).flujo_caja()
